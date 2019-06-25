@@ -36,7 +36,6 @@ The peak frequency of the Pierson-Moskowitz spectrum.
 2016-05-27
 Oyvind.Breivik@met.no
 """
-#fp_pm(u10) = 0.877GEARTH*u10.^(-2)
 fp_pm(u10) = 0.877GEARTH./(2pi*u10)
 
 
