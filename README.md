@@ -2,7 +2,7 @@ A repository for calculating the Stokes drift profile from integrated wave param
 
 The code is written in Julia 1.0.
 
-oyvind.breivik@met.no
+Oyvind Breivik
 
 2019-06-25.
 
