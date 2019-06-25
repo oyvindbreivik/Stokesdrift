@@ -201,7 +201,7 @@ function main()
     zmin = -parsed_args["dep"]#[1]
     dz = -parsed_args["dz"]#[1]
     zvec = 0.0:dz:zmin
-    println("CCC $infiles $outfile $lon $lat $zmin $dz")
+    println("CCC testing $infiles $outfile $lon $lat $zmin $dz")
 
     #infiles=["../Pro/Stokes_profile/stokes_shear_ei.20100101.nc","../Pro/Stokes_profile/stokes_shear_ei.20100102.nc"]
     #read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec)
