@@ -36,7 +36,7 @@ The peak frequency of the Pierson-Moskowitz spectrum.
 2016-05-27
 Oyvind.Breivik@met.no
 """
-fp_pm(u10) = 0.877GEARTH./(2pi*u10)
+fp_pm(u10) = 0.877GEARTH./(2π*u10)
 
 
 """
@@ -100,7 +100,7 @@ to infinite depth. All wave energy assumed to propagate in the same direction.
 2016-04-25
 Oyvind.Breivik@met.no
 """
-transport(hm0, fm01) = 2pi*fm01.*hm0.^2/16
+transport(hm0, fm01) = 2π*fm01.*hm0.^2/16
 
 
 """
@@ -171,7 +171,7 @@ Compute the Stokes profile under a Phillips-type spectrum.
 Oyvind.Breivik@met.no
 """
 function phillips_profile(v0, k, z; beta=1)
-    v0.*(exp.(2k.*z) - beta.*sqrt.(-2pi*k.*z).*erfc.(sqrt.(-2k.*z)))
+    v0.*(exp.(2k.*z) - beta.*sqrt.(-2π*k.*z).*erfc.(sqrt.(-2k.*z)))
 end
 
 
@@ -192,7 +192,7 @@ spectrum with a spectral shape parameter beta.
 Oyvind.Breivik@met.no
 """
 function phillips_shear(v0, k, z; beta=1)
-    shear = beta*v0.*sqrt(-pi*k./2z).*erfc.(sqrt(-2k.*z))
+    shear = beta*v0.*sqrt(-π*k./2z).*erfc.(sqrt(-2k.*z))
     if beta != 1
         shear += v0.*(2*(1-beta)*k.*exp.(2k.*z))
     end
@@ -218,7 +218,7 @@ Oyvind.Breivik@met.no
 """
 function phillips_transportz(v0, k, z; beta=1)
     (v0./2k).*(1 - exp.(2k.*z) -
-      (2beta/3)*(1+sqrt(pi)*(-2k.*z).^1.5.*erfc.(sqrt(-2k.*z)) -
+      (2beta/3)*(1+sqrt(π)*(-2k.*z).^1.5.*erfc.(sqrt(-2k.*z)) -
        (1-2k.*z).*exp.(2k.*z)))
 end
 
@@ -248,7 +248,7 @@ Computes the Stokes drift velocity vector from a 2D spectrum
 """
 function stokesprofile2d(spec2d, th, fr, zlevs=[0,])
 
-    FAC = 16pi^3/GEARTH
+    FAC = 16π^3/GEARTH
 
     # High-frequency cutoff
     fc = fr[end]
@@ -259,7 +259,7 @@ function stokesprofile2d(spec2d, th, fr, zlevs=[0,])
     dfr = Sphere.deltafr(fr)
     fact = FAC*fr.^3 .* dfr*delth
 
-    xk = 4pi*fr.^2/GEARTH
+    xk = 4π*fr.^2/GEARTH
     exp2k = exp.(2xk*zlevs')
 
     ust = zeros(zlevs)
@@ -272,20 +272,20 @@ function stokesprofile2d(spec2d, th, fr, zlevs=[0,])
     end
 
     # Add high-frequency tail
-    mu = -8pi^2*zlevs/GEARTH
-    tailint = exp.(-mu*fc^2)/fc - sqrt.(pi*mu)*(1.0-erf(fc*sqrt.(mu)))
+    mu = -8π^2*zlevs/GEARTH
+    tailint = exp.(-mu*fc^2)/fc - sqrt.(π*mu)*(1.0-erf(fc*sqrt.(mu)))
     sinint = (spec2d[:,end]'*sind.(th))[1]
     cosint = (spec2d[:,end]'*cosd.(th))[1]
     uhf = fachf*sinint*tailint
     vhf = fachf*cosint*tailint
-    utransphf = 2pi*sinint*(fc^2)/3
-    vtransphf = 2pi*cosint*(fc^2)/3
+    utransphf = 2π*sinint*(fc^2)/3
+    vtransphf = 2π*cosint*(fc^2)/3
 
     ust = ust+uhf
     vst = vst+vhf
 
-    utransp = (2pi*sind.(th)'*spec2d*(fr.*dfr)*delth)[1]
-    vtransp = (2pi*cosd.(th)'*spec2d*(fr.*dfr)*delth)[1]
+    utransp = (2π*sind.(th)'*spec2d*(fr.*dfr)*delth)[1]
+    vtransp = (2π*cosd.(th)'*spec2d*(fr.*dfr)*delth)[1]
 
     utransp = utransp+utransphf
     vtransp = vtransp+vtransphf
@@ -300,7 +300,7 @@ Three approximate transport profiles and one exact.
 """
 function transporty(y; b=1)
     c = 2b/3
-    return 1-c - (1-c)*exp.(-y) + c*y.*exp.(-y) - c*sqrt.(pi)*y.^1.5.*erfc.(sqrt.(y))
+    return 1-c - (1-c)*exp.(-y) + c*y.*exp.(-y) - c*sqrt.(π)*y.^1.5.*erfc.(sqrt.(y))
 end
 
 function approx_transporty0(y; b=1)
@@ -315,7 +315,7 @@ end
 
 function approx_transporty2(y; b=1)
     c = 2b/3
-    return 1-c - (1-c)*exp.(-y) - c*sqrt.(pi)*y.^1.5.*erfc.(sqrt.(y))
+    return 1-c - (1-c)*exp.(-y) - c*sqrt.(π)*y.^1.5.*erfc.(sqrt.(y))
 end
 
 end # module
