@@ -4,7 +4,7 @@ using NetCDF
 using Dates
 using ArgParse
 
-function parse_commandline()
+function parse_commandline(args)
     s = ArgParseSettings("""
     Compute Stokes shear and inverse Stokes depth from NetCDF input. Dump ASCII profile to selected location
 
@@ -19,41 +19,36 @@ function parse_commandline()
             arg_type = String
         "--outfile", "-o"
             help = "output file (ASCII)"
-            nargs = 1
             default = "stokes_combined.asc"
-            arg_type = String
+            #arg_type = String
         "--lon"
             help = "longitude of profile"
-            nargs = 1
-            arg_type = Number
+            arg_type = Float64
             default = 340.0
         "--lat"
             help = "latitude of profile"
-            nargs = 1
-            arg_type = Number
+            arg_type = Float64
             default = 60.0
         "--dep"
             help = "depth of profile [m]"
-            nargs = 1
-            arg_type = Number
+            arg_type = Float64
             default = 30.0
         "--dz"
             help = "depth resolution of profile [m]"
-            nargs = 1
-            arg_type = Number
+            arg_type = Float64
             default = 0.1
     end
 
-    return parse_args(s)
+    return parse_args(args, s)
 end
 
-function read_stokes_write_combined_profile(infiles, outfile, lon, lat; zvec=0.0:-0.1:-30.0)
+function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0:-0.1:-30.0)
     b = 1.0
     #zvec = 0.0:-0.1:-30.0
     BIG = 1000.0
     miss = 0
     TOL = 1.0/BIG
-    varnames = ["mp1", "ust", "vst", "swh", "shww", "p1ww", "p1ps", "shts", "mdts"]
+    varnames = ["mp1", "ust", "vst", "swh", "mwd", "shww", "mdww", "p1ww", "p1ps", "shts", "mdts", "wind"]
 
     # Read lons and lats from first file
     lons = ncread(infiles[1],"longitude")
@@ -99,6 +94,8 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat; zvec=0.0
         fm01[fm01.==miss] .= 0.0
         hm0 = vars["swh"]
         hm0[hm0.==miss] .= 0.0
+        mwd = Sphere.ang360(vars["mwd"].+180.0)
+        mwd[mwd.==miss] .= 361.0
         Vspd = 2π*fm01.*hm0.^2
 
         # Total sea Stokes parameters
@@ -117,7 +114,7 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat; zvec=0.0
         fm01sw = 1.0./p1ps
         fm01sw[fm01sw.==miss] .= 0.0
         # Wind and wave directions coming from convention, so add 180 deg
-        mdts = Sphere.ang180(vars["mdts"].+180.0)
+        mdts = Sphere.ang360(vars["mdts"].+180.0)
         mdts[mdts.==miss] .= 361.0
 
         ### Swell Stokes parameters
@@ -145,6 +142,8 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat; zvec=0.0
         p1ww[p1ww.<TOL] .= BIG
         fm01ws = 1.0./p1ww
         fm01ws[fm01ws.==miss] .= 0.0
+        mdww = Sphere.ang360(vars["mdww"].+180.0)
+        mdww[mdww.==miss] .= 361.0
 
         ### Wind sea Stokes parameters
         # Wind sea surface Stokes drift
@@ -161,6 +160,10 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat; zvec=0.0
         # Wind sea wave number
         kws = Stokes.phillips_wavenumber(v0spdws, Vspdws, beta=b)
 
+        # Wind speed
+        wspd = vars["wind"]
+        wspd[wspd.==miss] .= 0.0
+
         ### Dump profile at selected locations
         for (k,t) in enumerate(times)
             # Lat, lon, date
@@ -168,7 +171,11 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat; zvec=0.0
             t1 = t0+Dates.Hour(t)
             @printf(fout, "# %7.3f %8.4f %s\n", lats[j0], lons[i0], "$t1")
             # Transport header
-            @printf(fout, "# %13.5e %13.5e %13.5e %13.5e %13.5e %13.5e %13.5e\n", Vspd[i0,j0,k], Vspdsw[i0,j0,k], Vspdws[i0,j0,k], ust[i0,j0,k], vst[i0,j0,k], ksw[i0,j0,k], kws[i0,j0,k])
+            @printf(fout, "# Vspd Vspdsw Vspdws [m^2/s] ksw kws [rad/m] hm0 [m] tm01 [s] mwd [deg from N going to] shts p1ps mdts shww p1ww mdww wspd [m/s]\n")
+            @printf(fout, "# %11.4e %11.4e %11.4e %11.4e %11.4e %6.2f %6.2f %8.2f %6.2f %6.2f %8.2f %6.2f %6.2f %8.2f %6.2f\n", 
+                    Vspd[i0,j0,k], Vspdsw[i0,j0,k], Vspdws[i0,j0,k], ksw[i0,j0,k], kws[i0,j0,k], 
+                    hm0[i0,j0,k], tm01[i0,j0,k], mwd[i0,j0,k], shts[i0,j0,k], p1ps[i0,j0,k], mdts[i0,j0,k],
+                    shww[i0,j0,k], p1ww[i0,j0,k], mdww[i0,j0,k], wspd[i0,j0,k])
 
             # Swell profile
             vspdsw = Stokes.mono_profile(v0spdsw[i0,j0,k], ksw[i0,j0,k], zvec)
@@ -184,6 +191,8 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat; zvec=0.0
             for (i,z) in enumerate(zvec)
                 @printf(fout, "%5.2f %13.5e %13.5e %13.5e %13.5e %13.5e %13.5e\n", abs(z), veastsw[i]+veastws[i], vnorthsw[i]+vnorthws[i], veastsw[i], vnorthsw[i], veastws[i], vnorthws[i])
             end # for z
+
+            @printf(fout, "\n") # A blank line
         end # for t
 
     end # for infile
@@ -193,7 +202,7 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat; zvec=0.0
 end # function read_stokes_write_combined_profile
 
 function main()
-    parsed_args = parse_commandline()
+    parsed_args = parse_commandline(ARGS)
     infiles = parsed_args["infiles"]
     outfile = parsed_args["outfile"]#[1]
     lon = parsed_args["lon"]#[1]
@@ -201,10 +210,11 @@ function main()
     zmin = -parsed_args["dep"]#[1]
     dz = -parsed_args["dz"]#[1]
     zvec = 0.0:dz:zmin
-    println("CCC testing $infiles $outfile $lon $lat $zmin $dz")
+    #println("CCC testing $infiles $outfile $lon $lat $zmin $dz")
+    #println("CCC zvec: ", zvec)
 
     #infiles=["../Pro/Stokes_profile/stokes_shear_ei.20100101.nc","../Pro/Stokes_profile/stokes_shear_ei.20100102.nc"]
-    #read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec)
+    read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec)
 end # main
 
 main()
