@@ -11,8 +11,8 @@ Oyvind.Breivik@met.no
 """
 module Stokes
 
-using PyPlot, PyCall
-using Printf
+#using PyPlot, PyCall
+#using Printf
 import SpecialFunctions.erfc
 using Sphere
 
@@ -107,7 +107,7 @@ transport(hm0, fm01) = 2π*fm01.*hm0.^2/16
 Compute the wavenumber under a monochromatic wave.
 
 # Arguments:
- * `v0`: Surface Stokes drift speed [m/s]
+ * `v0`: Surface Stokes drift speed [``m/s``]
  * `V`: Stokes transport speed [``m^2/s``]
 
 # Returns:
@@ -123,18 +123,18 @@ mono_wavenumber(v0, V) = v0./2V
 Compute the inverse depth scale or wavenumber of a Phillips-type spectrum
 
 # Arguments:
- * `v0`: Surface Stokes drift speed [m/s]
+ * `v0`: Surface Stokes drift speed [``m/s``]
  * `V`: Stokes transport speed [``m^2/s``]
  * `beta`: Non-dimensional spectral shape parameter [~]
 
 # Returns:
- * `k`: Inverse depth scale (or wavenumber) [rad/m]
+ * `k`: Inverse depth scale (or wavenumber) [``rad/m``]
 
 2016-04-25
 Oyvind.Breivik@met.no
 """
 function phillips_wavenumber(v0, V; beta=1)
-    k = v0.*(1 .- 2beta/3)./(2V)
+    k = v0.*(1 .- 2beta/3)./2V
 end
 
 
@@ -142,12 +142,12 @@ end
 Compute the Stokes profile under a monochromatic wave.
 
 # Arguments:
- * `v0`: Surface Stokes drift speed [m/s]
+ * `v0`: Surface Stokes drift speed [``m/s``]
  * `k`: wavenumber [``rad/m``]
  * `z`: Depth (negative) below surface [``m``]
 
 # Returns:
- * `v`: The Stokes profile [m/s]
+ * `v`: The Stokes profile [``m/s``]
 
 2016-05-11
 Oyvind.Breivik@met.no
@@ -159,13 +159,13 @@ mono_profile(v0, k, z) = v0.*exp.(2k.*z)
 Compute the Stokes profile under a Phillips-type spectrum.
 
 # Arguments:
- * `v0`: Surface Stokes drift speed [m/s]
+ * `v0`: Surface Stokes drift speed [``m/s``]
  * `k`: Inverse depth scale (or wavenumber) [``rad/m``]
  * `z`: Depth (negative) below surface [``m``]
  * `beta`: Non-dimensional spectral shape parameter [``~``]
 
 # Returns:
- * `v`: The Stokes profile [m/s]
+ * `v`: The Stokes profile [``m/s``]
 
 2016-04-25
 Oyvind.Breivik@met.no
@@ -180,13 +180,13 @@ Compute the shear of the Stokes profile under the general Phillips-type
 spectrum with a spectral shape parameter beta.
 
 # Arguments:
- * `v0`: Surface Stokes drift speed [m/s]
+ * `v0`: Surface Stokes drift speed [``m/s``]
  * `k`: Inverse depth scale (or wavenumber) [``rad/m``]
  * `z`: Depth (negative) below surface [``m``]
- * `beta`: Non-dimensional spectral shape parameter [~]
+ * `beta`: Non-dimensional spectral shape parameter [``~``]
 
 # Returns:
- * `shear`: The shear of the Stokes profile [1/s]
+ * `shear`: The shear of the Stokes profile [``1/s``]
 
 2016-04-25
 Oyvind.Breivik@met.no
@@ -205,10 +205,10 @@ Compute the transport under the Stokes profile of a general Phillips-type
 spectrum with a spectral shape parameter `beta` to depth `z`.
 
 # Arguments:
- * `v0`: Surface Stokes drift speed [m/s]
+ * `v0`: Surface Stokes drift speed [``m/s``]
  * `k`: Inverse depth scale (or wavenumber) [``rad/m``]
  * `z`: Depth (negative) below surface [``m``]
- * `beta`: Non-dimensional spectral shape parameter [~]
+ * `beta`: Non-dimensional spectral shape parameter [``~``]
 
 # Returns:
  * `V`: Stokes transport speed [``m^2/s``]
@@ -218,19 +218,21 @@ Oyvind.Breivik@met.no
 """
 function phillips_transportz(v0, k, z; beta=1)
     (v0./2k).*(1 - exp.(2k.*z) -
-      (2beta/3)*(1+sqrt(π)*(-2k.*z).^1.5.*erfc.(sqrt(-2k.*z)) -
-       (1-2k.*z).*exp.(2k.*z)))
+    (2beta/3)*(1+sqrt(π)*(-2k.*z).^1.5.*erfc.(sqrt(-2k.*z)) -
+    (1-2k.*z).*exp.(2k.*z)))
 end
 
 
 """
+    stokesprofile2d(spec2d, th, fr, zlevs=[0,])
+
 Computes the Stokes drift velocity vector from a 2D spectrum
 
 # Arguments:
- * `spec2d`: Spectral density array nang x nfre [m^2/Hz/rad]
- * `th`: Direction array of length nang clockwise from north [deg]
+ * `spec2d`: Spectral density array nang x nfre [``m^2/Hz/rad``]
+ * `th`: Direction array of length nang clockwise from north [``deg``]
  * `fr`: Frequency array of length nfre [Hz]
- * `z`: Vertical coordinate (positive upwards, ie negative below surface) [m]
+ * `z`: Vertical coordinate (positive upwards, ie negative below surface) [``m``]
 
 # Returns:
  * `ust`: East component of Stokes drift velocity, array of length `z` [``m/s``]

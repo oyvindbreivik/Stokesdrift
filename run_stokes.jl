@@ -42,7 +42,25 @@ function parse_commandline(args)
     return parse_args(args, s)
 end
 
-function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0:-0.1:-30.0)
+"""
+Read NetCDF files with wave parameters and compute the profile and the transport under the combined
+Stokes profile of a general Phillips-type for wind sea spectrum with a spectral shape parameter `beta`
+and a monochromatic profile for the swell to depth `z`.
+
+# Arguments:
+ * `infiles`: NetCDF
+ * `outfile`: ASCII output file from selected location
+ * `zvec`: Depth (negative) below surface [``m``]
+ * `lon`: longitude [``deg``]
+ * `lat`: latitude [``deg``]
+
+# Returns:
+ * `nothing`
+
+2019-07-02
+Oyvind.Breivik@met.no
+"""
+function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0:-0.1:-29.9)
     b = 1.0
     #zvec = 0.0:-0.1:-30.0
     BIG = 1000.0
@@ -51,13 +69,13 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
     varnames = ["mp1", "ust", "vst", "swh", "mwd", "shww", "mdww", "p1ww", "p1ps", "shts", "mdts", "wind"]
 
     # Read lons and lats from first file
-    lons = ncread(infiles[1],"longitude")
-    lats = ncread(infiles[1],"latitude")
+    lons = ncread(infiles[1], "longitude")
+    lats = ncread(infiles[1], "latitude")
 
     # Read time units and extract offset (hours since 1900-01-01)
     times = ncread(infiles[1], "time")
     timeunits = ncgetatt(infiles[1], "time", "units")
-    m=match(r"(\d{4})-(\d\d)-(\d\d).(\d\d):(\d\d):(\d\.\d)", timeunits)
+    m = match(r"(\d{4})-(\d\d)-(\d\d).(\d\d):(\d\d):(\d\.\d)", timeunits)
     t0=DateTime(m.match, "Y-m-d H:M:S.s")
 
     dlon = Sphere.ang180(lons[2]-lons[1])
@@ -66,22 +84,21 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
     j0 = Int(ceil(lat-lats[1])/dlat)+1
 
     vars = Dict()
-    dry = []
-    v0spdws = []
+    #dry = []
+    #v0spdws = []
 
     fout = open(outfile, "w")
 
     # Loop over files
     for (ifile, infile) in enumerate(infiles)
-        times = ncread(infile,"time")
-        #nc = NetCDF.open(infile)
+        times = ncread(infile, "time")
         for (i, varname) in enumerate(varnames)
-            offset = ncgetatt(infile, varname,"add_offset")
-            scaling = ncgetatt(infile, varname,"scale_factor")
+            offset = ncgetatt(infile, varname, "add_offset")
+            scaling = ncgetatt(infile, varname, "scale_factor")
             ifield = ncread(infile, varname)
             miss=ncgetatt(infile, varname, "missing_value")
             dry = ifield.==miss
-            v = ifield*scaling.+offset
+            v = ifield*scaling .+ offset
             # Reset masked (land) to undef value
             v[dry] .= miss
             vars[varname] = v
@@ -96,18 +113,22 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         hm0[hm0.==miss] .= 0.0
         mwd = Sphere.ang360(vars["mwd"].+180.0)
         mwd[mwd.==miss] .= 361.0
-        Vspd = 2π*fm01.*hm0.^2
+        #Vspd = 2π*fm01.*hm0.^2
 
         # Total sea Stokes parameters
         Vspd = Stokes.transport(hm0, fm01)
         ust = vars["ust"]
         vst = vars["vst"]
         v0spd = hypot.(ust, vst)
+        # Not needed, really
+        ktot = Stokes.phillips_wavenumber(v0spd, Vspd, beta=b)
 
         ### Swell
         # Significant wave height of total swell
         shts = vars["shts"]
         shts[shts.==miss] .= 0.0
+        # Sometimes there are calm days, even in the North Atlantic
+        shts[shts.<0.1] .= 0.1
         # Swell first moment period
         p1ps = vars["p1ps"]
         p1ps[p1ps.<TOL] .= BIG
@@ -137,6 +158,8 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         # Significant height of wind waves
         shww = vars["shww"]
         shww[shww.==miss] .= 0.0
+        # Sometimes there are calm days, even in the North Atlantic
+        shww[shww.<0.1] .= 0.1
         # Wind sea first moment period
         p1ww = vars["p1ww"]
         p1ww[p1ww.<TOL] .= BIG
@@ -149,7 +172,7 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         # Wind sea surface Stokes drift
         v0eastws = ust-v0eastsw
         v0northws = vst-v0northsw
-        sdirws = rad2deg.(atan.(v0eastws, v0northws))
+        sdirws = atand.(v0eastws, v0northws)
         v0spdws = hypot.(v0eastws, v0northws)
         #show(size(v0spdws))
 
@@ -158,7 +181,7 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         Veastws = Vspdws.*sind.(sdirws)
         Vnorthws = Vspdws.*cosd.(sdirws)
         # Wind sea wave number
-        kws = Stokes.phillips_wavenumber(v0spdws, Vspdws, beta=b)
+        kws = Stokes.phillips_wavenumber(v0spdws, Vspdws)
 
         # Wind speed
         wspd = vars["wind"]
@@ -172,10 +195,15 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
             @printf(fout, "# %7.3f %8.4f %s\n", lats[j0], lons[i0], "$t1")
             # Transport header
             @printf(fout, "# Vspd Vspdsw Vspdws [m^2/s] ksw kws [rad/m] hm0 [m] tm01 [s] mwd [deg from N going to] shts p1ps mdts shww p1ww mdww wspd [m/s]\n")
-            @printf(fout, "# %11.4e %11.4e %11.4e %11.4e %11.4e %6.2f %6.2f %8.2f %6.2f %6.2f %8.2f %6.2f %6.2f %8.2f %6.2f\n", 
-                    Vspd[i0,j0,k], Vspdsw[i0,j0,k], Vspdws[i0,j0,k], ksw[i0,j0,k], kws[i0,j0,k], 
+            @printf(fout, "# %11.4e %11.4e %11.4e %11.4e %11.4e %6.2f %6.2f %8.2f %6.2f %6.2f %8.2f %6.2f %6.2f %8.2f %6.2f\n",
+                    Vspd[i0,j0,k], Vspdsw[i0,j0,k], Vspdws[i0,j0,k], ksw[i0,j0,k], kws[i0,j0,k],
                     hm0[i0,j0,k], tm01[i0,j0,k], mwd[i0,j0,k], shts[i0,j0,k], p1ps[i0,j0,k], mdts[i0,j0,k],
                     shww[i0,j0,k], p1ww[i0,j0,k], mdww[i0,j0,k], wspd[i0,j0,k])
+
+            # Total Sea Phillips Stokes profile CCC new
+            vspd = Stokes.phillips_profile(v0spd[i0,j0,k], ktot[i0,j0,k], zvec)
+            veast = vspd*sind(mwd[i0,j0,k])
+            vnorth = vspd*cosd(mwd[i0,j0,k])
 
             # Swell profile
             vspdsw = Stokes.mono_profile(v0spdsw[i0,j0,k], ksw[i0,j0,k], zvec)
