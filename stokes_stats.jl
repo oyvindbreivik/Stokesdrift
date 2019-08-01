@@ -11,6 +11,7 @@ using Statistics
 using NumericalIntegration
 using Stokes
 using PyPlot
+using Printf
 
 plotting = true
 infiles = ["Stokesdrift/run_stokes_12h.asc", "../Pro/MyWave/Stokes_profile/output_stokes_profile_erai_natl_60N20W_2010.asc"]
@@ -67,7 +68,8 @@ while !eof(f_comb) && !eof(f_full)
     (Vspd, mwd) = [parse(Float64, xs) for xs in split(ln)[[2,9]]]
 
     # Loop over record
-    for k = 1:nz
+    #for k = 1:nz
+    for k = 1:NLEV
         ln = readline(f_comb)
         profile_comb[k,:] .= [parse(Float64, xs) for xs in split(ln)]
     end # for
