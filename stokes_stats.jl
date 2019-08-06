@@ -6,6 +6,8 @@
 # Must recode this bit in Julia. Then compare the combined parametric profile to the full profile.
 #
 # run_stokes.jl generates the profile. This code is only used for plotting.
+#
+# Todo: add plotting of full profile against combined profile at selected time.
 
 using Statistics
 using NumericalIntegration
@@ -21,6 +23,7 @@ NPAR_FULL = 5
 NPOS = 4
 
 irec = 0
+irec0 = 189 # 2010-07-08
 
 # Combined profile v full profile
 # Velocity stats
@@ -150,6 +153,35 @@ while !eof(f_comb) && !eof(f_full)
             end # for        end # if
 
         end # if
+        if plotting && irec==irec0 # CCC
+            fig=matplotlib.pyplot.figure()
+            ax = fig.gca(projection="3d")
+            plot(veastws,vnorthws,zvec)
+            plot(veastws+veastsw,vnorthws+vnorthsw,zvec)
+            plot(veastsw,vnorthsw,zvec)
+            legendtexts = ("Phillips (wind sea)","Combined", "Monochromatic (swell)")
+            #legend(legendtexts,loc="upper left")
+            legend(legendtexts,loc="upper right")
+            xlabel(L"$u_{east}$ [m/s]")
+            ylabel(L"$u_{north}$ [m/s]")
+            zlabel(L"Depth [m]")
+            profile3dfig = "stokes_combined3d"
+            savefig("Fig/$profile3dfig.pdf")
+            savefig("Fig/$profile3dfig.png")
+    
+            fig2=matplotlib.pyplot.figure()
+            plot(veastws,vnorthws)
+            plot(veastws+veastsw,vnorthws+vnorthsw)
+            plot(veastsw,vnorthsw)
+            #legend(legendtexts,loc="upper left")
+            legend(legendtexts,loc="upper right")
+            xlabel(L"$u_{east}$ [m/s]")
+            ylabel(L"$u_{north}$ [m/s]")
+            profile2dfig = "stokes_combined2d"
+            savefig("Fig/$profile2dfig.pdf")
+            savefig("Fig/$profile2dfig.png")
+        end # if
+
         ln = readline(f_full)
         # Read separator line
     end # for ipos
