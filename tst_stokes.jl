@@ -27,6 +27,9 @@ end # function
 lon = 340.0
 lat = 60.0
 infiles = ["../Pro/Stokes_profile/stokes_shear_ei.20100101.nc","../Pro/Stokes_profile/stokes_shear_ei.20100102.nc"]
+infiles = ["../Stokesdrift/Stokes_shear_ei/stokes_shear_ei.20100701.nc"] # nice profile
+infiles = ["../Pro/Stokes_profile/stokes_shear_ei.20100709.nc"] # weird profile
+infiles = ["../Pro/Stokes_profile/stokes_shear_ei.20100708.nc"] # good but weird
 infile = infiles[1]
 outfile = "o1"
 plt = 1
@@ -163,24 +166,26 @@ if plt<2
         plot(veastws+veastsw,vnorthws+vnorthsw,zvec)
         plot(veastsw,vnorthsw,zvec)
         legendtexts = ("Phillips (wind sea)","Combined", "Monochromatic (swell)")
-        legend(legendtexts,loc="upper left")
+        #legend(legendtexts,loc="upper left")
+        legend(legendtexts,loc="upper right")
         xlabel(L"$u_{east}$ [m/s]")
         ylabel(L"$u_{north}$ [m/s]")
         zlabel(L"Depth [m]")
         profile3dfig = "stokes_combined3d"
-        savefig("$profile3dfig.pdf")
-        savefig("$profile3dfig.png")
+        savefig("Fig/$profile3dfig.pdf")
+        savefig("Fig/$profile3dfig.png")
 
         fig2=matplotlib.pyplot.figure()
         plot(veastws,vnorthws)
         plot(veastws+veastsw,vnorthws+vnorthsw)
         plot(veastsw,vnorthsw)
-        legend(legendtexts,loc="upper left")
+        #legend(legendtexts,loc="upper left")
+        legend(legendtexts,loc="upper right")
         xlabel(L"$u_{east}$ [m/s]")
         ylabel(L"$u_{north}$ [m/s]")
         profile2dfig = "stokes_combined2d"
-        savefig("$profile2dfig.pdf")
-        savefig("$profile2dfig.png")
+        savefig("Fig/$profile2dfig.pdf")
+        savefig("Fig/$profile2dfig.png")
     end # plt
 end # if plt<2
 
