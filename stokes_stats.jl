@@ -20,7 +20,6 @@ using Printf
 pyplt = pyimport("matplotlib.pyplot")
 mplot3d = pyimport("mpl_toolkits.mplot3d")
 
-
 plotting = true
 infiles = ["Stokesdrift/run_stokes_12h.asc", "../Pro/MyWave/Stokes_profile/output_stokes_profile_erai_natl_60N20W_2010.asc"]
 NLEV = 300
@@ -29,7 +28,9 @@ NPAR_FULL = 5
 NPOS = 4
 
 irec = 0
-irec0 = 189 # 2010-07-08
+irec0 = 189 # 2010-04-05 interesting, wide angle between swell and windsea
+irec0 = 189*2 # 2010-07-08 less deviation between swell and windsea
+irec0 = 199*2 # -07-18
 
 # Combined profile v full profile
 # Velocity stats
