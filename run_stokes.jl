@@ -118,7 +118,6 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         hm0[hm0.==miss] .= 0.0
         mwd = Sphere.ang360(vars["mwd"].+180.0)
         mwd[mwd.==miss] .= 361.0
-        #Vspd = 2π*fm01.*hm0.^2
 
         # Total sea Stokes parameters
         Vspd = Stokes.transport(hm0, fm01)
@@ -210,12 +209,17 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
             veast = vspd*sind(mwd[i0,j0,k])
             vnorth = vspd*cosd(mwd[i0,j0,k])
 
-            # Swell profile
+            # Swell monochromatic profile
             vspdsw = Stokes.mono_profile(v0spdsw[i0,j0,k], ksw[i0,j0,k], zvec)
             veastsw = vspdsw*sind(sdirsw[i0,j0,k])
             vnorthsw = vspdsw*cosd(sdirsw[i0,j0,k])
 
-            # Wind sea profile
+            # Swell Phillips profile
+            #vspdsw_phil = Stokes.phillips_profile(v0spdsw[i0,j0,k], ksw[i0,j0,k], zvec)
+            #veastsw_phil = vspdsw*sind(sdirsw[i0,j0,k])
+            #vnorthsw_phil = vspdsw*cosd(sdirsw[i0,j0,k])
+
+            # Wind sea Phillips profile
             vspdws = Stokes.phillips_profile(v0spdws[i0,j0,k], kws[i0,j0,k], zvec)
             veastws = vspdws*sind(sdirws[i0,j0,k])
             vnorthws = vspdws*cosd(sdirws[i0,j0,k])
