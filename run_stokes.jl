@@ -10,6 +10,7 @@ function parse_commandline(args)
 
     Example:
     time julia run_stokes.jl -i /home/oyvindb/Data/Mdata/Stokes_shear/tst.nc -o stokes_combined.asc --lon 340.0 --lat 60.0 --dep 30 --dz 0.1
+    time julia run_stokes.jl -i ../../Stokesdrift/Stokes_shear_ei/stokes*2010*.nc -o run_stokes_12h_nonans.asc --lon 340.0 --lat 60.0 --dep 30 --dz 0.1
     """)
 
     @add_arg_table s begin
@@ -84,7 +85,7 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
     j0 = Int(ceil(lat-lats[1])/dlat)+1
 
     vars = Dict()
-    #dry = []
+    dry = 0.0
     #v0spdws = []
 
     fout = open(outfile, "w")
