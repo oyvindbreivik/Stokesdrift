@@ -6,6 +6,7 @@
 # Must recode this bit in Julia. Then compare the combined parametric profile to the full profile.
 #
 # run_stokes.jl generates the profile. This code is only used for plotting.
+# Ignore 12:00 UTC as there is a discrepancy between the spectra and the integrated parameters.
 #
 # Todo: add plotting of full profile against combined profile at selected time.
 
@@ -30,7 +31,7 @@ NPOS = 4
 irec = 0
 irec0 = 189 # 2010-04-05 interesting, wide angle between swell and windsea
 irec0 = 189*2 # 2010-07-08 less deviation between swell and windsea
-irec0 = 199*2 # -07-18
+irec0 = 199*2+1 # -07-18
 
 # Combined profile v full profile
 # Velocity stats
@@ -66,9 +67,11 @@ f_full = open(infiles[2])
 zvec = zeros(NLEV)
 profile_full = zeros(NLEV, NPAR_FULL)
 profile_comb = zeros(NLEV, NPAR_COMB)
+
 # Loop over records in files
 while !eof(f_comb) && !eof(f_full)
     ### Profile from combined parametric spectrum
+
     # Read header lines
     global irec += 1
     ln = readline(f_comb)
@@ -79,14 +82,11 @@ while !eof(f_comb) && !eof(f_full)
     (Vspd, mwd) = [parse(Float64, xs) for xs in split(ln)[[2,9]]]
 
     # Loop over record
-    #for k = 1:nz
     for k in 1:NLEV
         ln = readline(f_comb)
         profile_comb[k,:] .= [parse(Float64, xs) for xs in split(ln)]
     end # for
-    if length(findall(isnan.(profile_full))) > 0
-        println("CCC NaNs phil irec=$irec")
-    end
+
     zvec = -profile_comb[:,1]
     veast_comb = profile_comb[:,2]
     vnorth_comb = profile_comb[:,3]
@@ -100,19 +100,11 @@ while !eof(f_comb) && !eof(f_full)
     veast_phil = vspd_phil*sind(sdir)
     vnorth_phil = vspd_phil*cosd(sdir)
 
-    # Swell and wind sea profiles
-    #veastsw = profile_comb[:,4]
-    #vnorthsw = profile_comb[:,5]
-    #veastws = profile_comb[:,6]
-    #vnorthws = profile_comb[:,7]
-
-    # Read last line (z == -30.0) and ignore it
-    # CCC This will change
-    ln = readline(f_comb)
     # Read separator line before next record
     ln = readline(f_comb)
 
     ### Profiles from full spectrum
+
     # Loop over npos locations
     for ipos = 1:NPOS
         # Read header lines
@@ -123,8 +115,8 @@ while !eof(f_comb) && !eof(f_full)
         ln = readline(f_full)
         ln = readline(f_full)
         # Select location matching that of profile_comb
-        if lon_full≈lon_comb && lat_full≈lat_comb
-            #println("CCC lon_full, lat_full irec $lon_full $lat_full $irec")
+        if lon_full≈lon_comb && lat_full≈lat_comb && irec%2==1
+            #println("CCC lon_full, lat_full, irec, date_comb, date_full, time_full, $lon_full $lat_full $irec $date_comb $date_full $time_full")
             # Loop over record
             for k = 1:NLEV
                 ln = readline(f_full)
@@ -157,7 +149,11 @@ while !eof(f_comb) && !eof(f_full)
             push!(rmsspd_phil, std(vspd_phil - vspd_full, mean=0.0))
             push!(stdspd_phil, std(vspd_phil - vspd_full))
 
-            if plotting && irec==irec0 # CCC
+            # Plot profiles for selected time
+            if plotting && irec==irec0
+                # Swell and wind sea profiles
+                veast_comb = profile_comb[:,2]
+                vnorth_comb = profile_comb[:,3]
                 veastsw = profile_comb[:,4]
                 vnorthsw = profile_comb[:,5]
                 veastws = profile_comb[:,6]
@@ -166,7 +162,8 @@ while !eof(f_comb) && !eof(f_full)
                 fig=matplotlib.pyplot.figure()
                 ax = fig.gca(projection="3d")
                 plot(veastws, vnorthws, zvec)
-                plot(veastws+veastsw, vnorthws+vnorthsw, zvec)
+                #plot(veastws+veastsw, vnorthws+vnorthsw, zvec)
+                plot(veast_comb, vnorth_comb, zvec)
                 plot(veastsw, vnorthsw, zvec)
                 plot(veast_full, vnorth_full, zvec)
                 plot(veast_phil, vnorth_phil, zvec)
@@ -191,7 +188,7 @@ while !eof(f_comb) && !eof(f_full)
                 plot(veast_phil, vnorth_phil)
                 #legend(legendtexts,loc="upper left")
                 #title("Date: $date_comb, " * @sprintf("lon: %7.2f, lat: %7.2f", lon_comb, lat_comb))
-                title("Date: $date_comb vs $date_full $time_full " * @sprintf("lon: %7.2f, lat: %7.2f", lon_comb, lat_comb))
+                title("Date: $date_comb " * @sprintf("lon: %7.2f, lat: %7.2f", lon_comb, lat_comb))
                 legend(legendtexts,loc="upper right")
                 xlabel(L"$u_{east}$ [m/s]")
                 ylabel(L"$u_{north}$ [m/s]")
@@ -217,31 +214,8 @@ while !eof(f_comb) && !eof(f_full)
     #end
 end # while
 
-# Remove NaNs. CCC this will change
-deleteat!(meaneast_comb, findall(isnan.(meaneast_comb)))
-deleteat!(rmseast_comb, findall(isnan.(rmseast_comb)))
-deleteat!(stdeast_comb, findall(isnan.(stdeast_comb)))
-deleteat!(meannorth_comb, findall(isnan.(meannorth_comb)))
-deleteat!(rmsnorth_comb, findall(isnan.(rmsnorth_comb)))
-deleteat!(stdnorth_comb, findall(isnan.(stdnorth_comb)))
-
-deleteat!(meanspd_comb, findall(isnan.(meanspd_comb)))
-deleteat!(rmsspd_comb, findall(isnan.(rmsspd_comb)))
-deleteat!(stdspd_comb, findall(isnan.(stdspd_comb)))
-
-deleteat!(meaneast_phil, findall(isnan.(meaneast_phil)))
-deleteat!(rmseast_phil, findall(isnan.(rmseast_phil)))
-deleteat!(stdeast_phil, findall(isnan.(stdeast_phil)))
-deleteat!(meannorth_phil, findall(isnan.(meannorth_phil)))
-deleteat!(rmsnorth_phil, findall(isnan.(rmsnorth_phil)))
-deleteat!(stdnorth_phil, findall(isnan.(stdnorth_phil)))
-
-deleteat!(meanspd_phil, findall(isnan.(meanspd_phil)))
-deleteat!(rmsspd_phil, findall(isnan.(rmsspd_phil)))
-deleteat!(stdspd_phil, findall(isnan.(stdspd_phil)))
-
-#if plotting
-if false
+if plotting
+#if false
     n = length(stdeast_comb)
     bins = -0.05:0.001:0.05
     plusbins = 0:0.001:0.05

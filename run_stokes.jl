@@ -10,7 +10,7 @@ function parse_commandline(args)
 
     Example:
     time julia run_stokes.jl -i /home/oyvindb/Data/Mdata/Stokes_shear/tst.nc -o stokes_combined.asc --lon 340.0 --lat 60.0 --dep 30 --dz 0.1
-    time julia run_stokes.jl -i ../../Stokesdrift/Stokes_shear_ei/stokes*2010*.nc -o run_stokes_12h_nonans.asc --lon 340.0 --lat 60.0 --dep 30 --dz 0.1
+    time julia run_stokes.jl -i ../../Stokesdrift/Stokes_shear_ei/stokes*2010*.nc -o run_stokes_12h.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
     """)
 
     @add_arg_table s begin
@@ -33,11 +33,15 @@ function parse_commandline(args)
         "--dep"
             help = "depth of profile [m]"
             arg_type = Float64
-            default = 30.0
+            default = 29.9
         "--dz"
             help = "depth resolution of profile [m]"
             arg_type = Float64
             default = 0.1
+        "--strd"
+            help = "stride of output"
+            arg_type = Int64
+            default = 1
     end
 
     return parse_args(args, s)
@@ -61,7 +65,7 @@ and a monochromatic profile for the swell to depth `z`.
 2019-07-02
 Oyvind.Breivik@met.no
 """
-function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0:-0.1:-29.9)
+function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0:-0.1:-29.9, strd=1)
     b = 1.0
     #zvec = 0.0:-0.1:-30.0
     BIG = 1000.0
@@ -188,8 +192,8 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         wspd = vars["wind"]
         wspd[wspd.==miss] .= 0.0
 
-        ### Dump profile at selected locations
-        for (k,t) in enumerate(times)
+        ### Dump profile at selected locations, use stride (defaults to 1)
+        for (k,t) in enumerate(times[1:strd:end])
             # Lat, lon, date
             # Convert to real date and time by adding time units offset to number of hours from start
             t1 = t0+Dates.Hour(t)
@@ -233,17 +237,14 @@ end # function read_stokes_write_combined_profile
 function main()
     parsed_args = parse_commandline(ARGS)
     infiles = parsed_args["infiles"]
-    outfile = parsed_args["outfile"]#[1]
-    lon = parsed_args["lon"]#[1]
-    lat = parsed_args["lat"]#[1]
-    zmin = -parsed_args["dep"]#[1]
-    dz = -parsed_args["dz"]#[1]
+    outfile = parsed_args["outfile"]
+    lon = parsed_args["lon"]
+    lat = parsed_args["lat"]
+    zmin = -parsed_args["dep"]
+    dz = -parsed_args["dz"]
+    strd = parsed_args["strd"]
     zvec = 0.0:dz:zmin
-    #println("CCC testing $infiles $outfile $lon $lat $zmin $dz")
-    #println("CCC zvec: ", zvec)
-
-    #infiles=["../Pro/Stokes_profile/stokes_shear_ei.20100101.nc","../Pro/Stokes_profile/stokes_shear_ei.20100102.nc"]
-    read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec)
+    read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec, strd)
 end # main
 
 main()
