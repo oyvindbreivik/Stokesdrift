@@ -134,7 +134,7 @@ Compute the inverse depth scale or wavenumber of a Phillips-type spectrum
 Oyvind.Breivik@met.no
 """
 function phillips_wavenumber(v0, V; beta=1)
-    k = v0.*(1 .- 2beta/3)./2V
+    k = v0.*(1.0 .- 2beta/3)./2V
 end
 
 

@@ -90,7 +90,6 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
 
     vars = Dict()
     dry = 0.0
-    #v0spdws = []
 
     fout = open(outfile, "w")
 
@@ -124,8 +123,8 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         ust = vars["ust"]
         vst = vars["vst"]
         v0spd = hypot.(ust, vst)
-        # Not needed, really
-        ktot = Stokes.phillips_wavenumber(v0spd, Vspd, beta=b)
+        sdir = atand.(ust, vst)
+        ktot = Stokes.phillips_wavenumber(v0spd, Vspd)
 
         ### Swell
         # Significant wave height of total swell
@@ -143,6 +142,7 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         mdts[mdts.==miss] .= 361.0
 
         ### Swell Stokes parameters
+
         # Swell transport
         Vspdsw = Stokes.transport(shts, fm01sw)
         # Swell wavenumber
@@ -150,13 +150,19 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         # Swell surface Stokes drift
         v0spdsw = 2ksw.*Vspdsw
         # Swell Stokes drift direction
-        sdirsw = mdts
+        # sdirsw = mdts
         v0eastsw = v0spdsw.*sind.(mdts)
         v0northsw = v0spdsw.*cosd.(mdts)
         v0eastsw[dry] .= 0.0
         v0northsw[dry] .= 0.0
         Veastsw = Vspdsw.*sind.(mdts)
         Vnorthsw = Vspdsw.*cosd.(mdts)
+
+        # Swell parameters for Phillips profile
+        # k = v0.*(1.0 .- 2beta/3)./2V, so:
+        v0spdsw_phil2 = 6ksw.*Vspdsw
+        v0eastsw_phil2 = v0spdsw_phil2.*sind.(mdts)
+        v0northsw_phil2 = v0spdsw_phil2.*cosd.(mdts)
 
         ### Wind sea
         # Significant height of wind waves
@@ -178,7 +184,6 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         v0northws = vst-v0northsw
         sdirws = atand.(v0eastws, v0northws)
         v0spdws = hypot.(v0eastws, v0northws)
-        #show(size(v0spdws))
 
         # Wind sea Stokes transport
         Vspdws = Stokes.transport(shww, fm01ws)
@@ -186,6 +191,13 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         Vnorthws = Vspdws.*cosd.(sdirws)
         # Wind sea wave number
         kws = Stokes.phillips_wavenumber(v0spdws, Vspdws)
+
+        # Wind sea Stokes parameters adjusted to Phillips swell parameters
+        v0eastws_phil2 = ust-v0eastsw_phil2
+        v0northws_phil2 = vst-v0northsw_phil2
+        sdirws_phil2 = atand.(v0eastws_phil2, v0northws_phil2)
+        v0spdws_phil2 = hypot.(v0eastws_phil2, v0northws_phil2)
+
 
         # Wind speed
         wspd = vars["wind"]
@@ -204,29 +216,37 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
                     hm0[i0,j0,k], tm01[i0,j0,k], mwd[i0,j0,k], shts[i0,j0,k], p1ps[i0,j0,k], mdts[i0,j0,k],
                     shww[i0,j0,k], p1ww[i0,j0,k], mdww[i0,j0,k], wspd[i0,j0,k])
 
-            # Total Sea Phillips Stokes profile CCC new
+            # Total sea Phillips Stokes profile 
             vspd = Stokes.phillips_profile(v0spd[i0,j0,k], ktot[i0,j0,k], zvec)
-            veast = vspd*sind(mwd[i0,j0,k])
-            vnorth = vspd*cosd(mwd[i0,j0,k])
+            veast = vspd*sind(sdir[i0,j0,k])
+            vnorth = vspd*cosd(sdir[i0,j0,k])
 
             # Swell monochromatic profile
             vspdsw = Stokes.mono_profile(v0spdsw[i0,j0,k], ksw[i0,j0,k], zvec)
-            veastsw = vspdsw*sind(sdirsw[i0,j0,k])
-            vnorthsw = vspdsw*cosd(sdirsw[i0,j0,k])
-
-            # Swell Phillips profile
-            #vspdsw_phil = Stokes.phillips_profile(v0spdsw[i0,j0,k], ksw[i0,j0,k], zvec)
-            #veastsw_phil = vspdsw*sind(sdirsw[i0,j0,k])
-            #vnorthsw_phil = vspdsw*cosd(sdirsw[i0,j0,k])
+            veastsw = vspdsw*sind(mdts[i0,j0,k])
+            vnorthsw = vspdsw*cosd(mdts[i0,j0,k])
 
             # Wind sea Phillips profile
             vspdws = Stokes.phillips_profile(v0spdws[i0,j0,k], kws[i0,j0,k], zvec)
             veastws = vspdws*sind(sdirws[i0,j0,k])
             vnorthws = vspdws*cosd(sdirws[i0,j0,k])
 
+            # Phillips swell profile 
+            vspdsw_phil2 = Stokes.phillips_profile(v0spdsw_phil2[i0,j0,k], ksw[i0,j0,k], zvec)
+            veastsw_phil2 = vspdsw_phil2*sind(mdts[i0,j0,k])
+            vnorthsw_phil2 = vspdsw_phil2*cosd(mdts[i0,j0,k])
+
+            # Wind sea Phillips profile adjusted to swell Phillips profile (the sum must match surface Stokes drift)
+            vspdws_phil2 = Stokes.phillips_profile(v0spdws_phil2[i0,j0,k], kws[i0,j0,k], zvec)
+            veastws_phil2 = vspdws_phil2*sind(sdirws[i0,j0,k])
+            vnorthws_phil2 = vspdws_phil2*cosd(sdirws[i0,j0,k])
+
             # Loop over vertical
+            @printf(fout, "# veast_comb [m/s] vnorth_comb veastsw, vnorthsw, veastws, vnorthws, veast vnorth veastsw_phil2, vnorthsw_phil2, veastws_phil2, vnorthws_phil2\n")
             for (i,z) in enumerate(zvec)
-                @printf(fout, "%5.2f %13.5e %13.5e %13.5e %13.5e %13.5e %13.5e\n", abs(z), veastsw[i]+veastws[i], vnorthsw[i]+vnorthws[i], veastsw[i], vnorthsw[i], veastws[i], vnorthws[i])
+                @printf(fout, "%5.2f %13.5e %13.5e %13.5e %13.5e %13.5e %13.5e %13.5e %13.5e %13.5e %13.5e %13.5e %13.5e\n", 
+                abs(z), veastsw[i]+veastws[i], vnorthsw[i]+vnorthws[i], veastsw[i], vnorthsw[i], veastws[i], vnorthws[i],
+                veast[i], vnorth[i], veastsw_phil2[i], vnorthsw_phil2[i], veastws_phil2[i], vnorthws_phil2[i])
             end # for z
 
             @printf(fout, "\n") # A blank line

@@ -21,10 +21,11 @@ using Printf
 pyplt = pyimport("matplotlib.pyplot")
 mplot3d = pyimport("mpl_toolkits.mplot3d")
 
-plotting = true
+profileplotting = true
+statplotting = false
 infiles = ["Stokesdrift/run_stokes_12h.asc", "../Pro/MyWave/Stokes_profile/output_stokes_profile_erai_natl_60N20W_2010.asc"]
 NLEV = 300
-NPAR_COMB = 7
+NPAR_COMB = 13
 NPAR_FULL = 5
 NPOS = 4
 
@@ -46,7 +47,8 @@ meanspd_comb = []
 rmsspd_comb = []
 stdspd_comb = []
 
-# Phllips profile v full profile
+### Phllips profile vs full profile
+
 # Velocity stats
 meaneast_phil = []
 rmseast_phil = []
@@ -54,11 +56,11 @@ stdeast_phil = []
 meannorth_phil = []
 rmsnorth_phil = []
 stdnorth_phil = []
+
 # Speed stats
 meanspd_phil = []
 rmsspd_phil = []
 stdspd_phil = []
-
 
 # Open files
 f_comb = open(infiles[1])
@@ -77,9 +79,12 @@ while !eof(f_comb) && !eof(f_full)
     ln = readline(f_comb)
     (lat_comb, lon_comb) = [parse(Float64, xs) for xs in split(ln)[2:3]]
     date_comb = split(ln)[4]
-    ln = readline(f_comb)
-    ln = readline(f_comb)
-    (Vspd, mwd) = [parse(Float64, xs) for xs in split(ln)[[2,9]]]
+    ln2 = readline(f_comb)
+    ln3 = readline(f_comb)
+    (Vspd, Vspdsw, ksw, mwd, p1ps, mdts) = [parse(Float64, xs) for xs in split(ln3)[[2,3,5,9,10,11]]]
+    #println("CCC irec=$irec, Vspd=$Vspd, mwd=$mwd, p1ps=$p1ps, mdts=$mdts")
+    ln4 = readline(f_comb)
+    println(ln4)
 
     # Loop over record
     for k in 1:NLEV
@@ -92,13 +97,23 @@ while !eof(f_comb) && !eof(f_full)
     vnorth_comb = profile_comb[:,3]
     vspd_comb = hypot.(veast_comb, vnorth_comb)
     v0spd = vspd_comb[1]
+    veast_phil = profile_comb[:,8]
+    vnorth_phil = profile_comb[:,9]
+    vspd_phil = hypot.(veast_phil, vnorth_phil)
 
     # Compute Phillips profile from total parameters for comparison with combined and full profiles
-    k_phil = Stokes.phillips_wavenumber(v0spd, Vspd)
-    vspd_phil = Stokes.phillips_profile(v0spd, k_phil, zvec)
-    sdir = atand.(veast_comb[1], vnorth_comb[1])
-    veast_phil = vspd_phil*sind(sdir)
-    vnorth_phil = vspd_phil*cosd(sdir)
+    #k_phil = Stokes.phillips_wavenumber(v0spd, Vspd)
+    #vspd_phil = Stokes.phillips_profile(v0spd, k_phil, zvec)
+    #sdir = atand(veast_comb[1], vnorth_comb[1])
+    #veast_phil = vspd_phil*sind(sdir)
+    #vnorth_phil = vspd_phil*cosd(sdir)
+
+    # Compute Phillips swell profile in addition to monochromatic swell profile
+    # k = v0.*(1.0 .- 2beta/3)./2V, so:
+    #v0spdsw_phil = 6ksw*Vspdsw
+    #vspdsw_phil = Stokes.phillips_profile(v0spdsw_phil, ksw, zvec)
+    #veastsw_phil = vspdsw_phil*sind(mdts)
+    #vnorthsw_phil = vspdsw_phil*cosd(mdts)
 
     # Read separator line before next record
     ln = readline(f_comb)
@@ -113,8 +128,8 @@ while !eof(f_comb) && !eof(f_full)
         date_full = split(ln)[4]
         time_full = split(ln)[5]
         ln = readline(f_full)
-        ln = readline(f_full)
-        # Select location matching that of profile_comb
+        ln3f = readline(f_full)
+        # Select location matching that of profile_comb, skip 12UTC due to inconsistency with spectra
         if lon_full≈lon_comb && lat_full≈lat_comb && irec%2==1
             #println("CCC lon_full, lat_full, irec, date_comb, date_full, time_full, $lon_full $lat_full $irec $date_comb $date_full $time_full")
             # Loop over record
@@ -149,8 +164,12 @@ while !eof(f_comb) && !eof(f_full)
             push!(rmsspd_phil, std(vspd_phil - vspd_full, mean=0.0))
             push!(stdspd_phil, std(vspd_phil - vspd_full))
 
-            # Plot profiles for selected time
-            if plotting && irec==irec0
+            ### Plot profiles for selected time
+
+            if profileplotting && irec==irec0
+                #println(ln3)
+                #println(ln3f)
+
                 # Swell and wind sea profiles
                 veast_comb = profile_comb[:,2]
                 vnorth_comb = profile_comb[:,3]
@@ -158,7 +177,14 @@ while !eof(f_comb) && !eof(f_full)
                 vnorthsw = profile_comb[:,5]
                 veastws = profile_comb[:,6]
                 vnorthws = profile_comb[:,7]
+                veast = profile_comb[:,8]
+                vnorth = profile_comb[:,9]
+                veastsw_phil2 = profile_comb[:,10]
+                vnorthsw_phil2 = profile_comb[:,11]
+                veastws_phil2 = profile_comb[:,12]
+                vnorthws_phil2 = profile_comb[:,13]
 
+                # 3D view
                 fig=matplotlib.pyplot.figure()
                 ax = fig.gca(projection="3d")
                 plot(veastws, vnorthws, zvec)
@@ -167,38 +193,71 @@ while !eof(f_comb) && !eof(f_full)
                 plot(veastsw, vnorthsw, zvec)
                 plot(veast_full, vnorth_full, zvec)
                 plot(veast_phil, vnorth_phil, zvec)
-                #title("Date: $date_comb vs $date_full $time_full " * @sprintf("lon: %7.2f, lat: %7.2f", lon_comb, lat_comb))
+                plot(veastsw_phil2, vnorthsw_phil2, zvec)
                 title("Date: $date_comb " * @sprintf("lon: %7.2f, lat: %7.2f", lon_comb, lat_comb))
-                legendtexts = ("Phillips (wind sea)", "Combined", "Monochromatic (swell)", "Full 2D", "Phillips")
-                #legendtexts = ("Phillips (wind sea)", "Combined", "Monochromatic (swell)", "Full 2D")
-                #legend(legendtexts,loc="upper left")
-                legend(legendtexts,loc="upper right")
+                legendtexts = ("Phillips (wind sea)", "Combined", "Monochromatic (swell)", "Full 2D", "Phillips (total sea)", "Phillips (swell)")
+                legend(legendtexts,loc="center left")
                 xlabel(L"$u_{east}$ [m/s]")
                 ylabel(L"$u_{north}$ [m/s]")
-                zlabel(L"Depth [m]")
+                zlabel(L"$z$ [m]")
                 profile3dfig = "stokes_combined3d"
                 savefig("Fig/$profile3dfig.pdf")
                 savefig("Fig/$profile3dfig.png")
 
+                # 2D bird's eye
                 fig2 = matplotlib.pyplot.figure()
-                plot(veastws,vnorthws)
-                plot(veastws+veastsw,vnorthws+vnorthsw)
-                plot(veastsw,vnorthsw)
+                plot(veastws, vnorthws)
+                #plot(veastws+veastsw,vnorthws+vnorthsw)
+                plot(veast_comb, vnorth_comb)
+                plot(veastsw, vnorthsw)
                 plot(veast_full, vnorth_full)
                 plot(veast_phil, vnorth_phil)
-                #legend(legendtexts,loc="upper left")
-                #title("Date: $date_comb, " * @sprintf("lon: %7.2f, lat: %7.2f", lon_comb, lat_comb))
                 title("Date: $date_comb " * @sprintf("lon: %7.2f, lat: %7.2f", lon_comb, lat_comb))
-                legend(legendtexts,loc="upper right")
+                legend(legendtexts,loc="upper left")
                 xlabel(L"$u_{east}$ [m/s]")
                 ylabel(L"$u_{north}$ [m/s]")
+                grid(fig2)
                 profile2dfig = "stokes_combined2d"
                 savefig("Fig/$profile2dfig.pdf")
                 savefig("Fig/$profile2dfig.png")
+
+                # Speed profile
+                fig3 = matplotlib.pyplot.figure()
+                plot(hypot.(veastws, vnorthws), zvec)
+                #plot(hypot.(veastws+veastsw, vnorthws+vnorthsw), zvec)
+                plot(hypot.(veast_comb, vnorth_comb), zvec)
+                plot(hypot.(veastsw, vnorthsw), zvec)
+                plot(hypot.(veast_full, vnorth_full), zvec)
+                plot(hypot.(veast_phil, vnorth_phil), zvec)
+                title("Date: $date_comb " * @sprintf("lon: %7.2f, lat: %7.2f", lon_comb, lat_comb))
+                legend(legendtexts,loc="lower right")
+                xlabel(L"$u_{speed}$ [m/s]")
+                ylabel(L"$z$ [m]")
+                grid(fig3)
+                profilefig = "stokes_combined_speed_profile"
+                savefig("Fig/$profilefig.pdf")
+                savefig("Fig/$profilefig.png")
+
+                # 2D bird's eye phil2 (two Phillips profiles)
+                fig4 = matplotlib.pyplot.figure()
+                plot(veastws_phil2, vnorthws_phil2)
+                plot(veastsw_phil2+veastws_phil2, vnorthsw_phil2+vnorthws_phil2)
+                plot(veastsw_phil2, vnorthsw_phil2)
+                plot(veast_full, vnorth_full)
+                plot(veast_phil, vnorth_phil)
+                title("Phil2 Date: $date_comb " * @sprintf("lon: %7.2f, lat: %7.2f", lon_comb, lat_comb))
+                legend(legendtexts,loc="upper left")
+                xlabel(L"$u_{east}$ [m/s]")
+                ylabel(L"$u_{north}$ [m/s]")
+                grid(fig2)
+                profile2dphil2fig = "stokes_combined2d_phil2"
+                savefig("Fig/$profile2dphil2fig.pdf")
+                savefig("Fig/$profile2dphil2fig.png")
+
             end # if
         else
             # Skip other locations
-            for k = 1:NLEV
+            for k in 1:NLEV
                 ln = readline(f_full)
             end # for        end # if
 
@@ -214,8 +273,7 @@ while !eof(f_comb) && !eof(f_full)
     #end
 end # while
 
-if plotting
-#if false
+if statplotting
     n = length(stdeast_comb)
     bins = -0.05:0.001:0.05
     plusbins = 0:0.001:0.05
