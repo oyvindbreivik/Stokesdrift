@@ -197,7 +197,7 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         v0northws_phil2 = vst-v0northsw_phil2
         sdirws_phil2 = atand.(v0eastws_phil2, v0northws_phil2)
         v0spdws_phil2 = hypot.(v0eastws_phil2, v0northws_phil2)
-
+        kws_phil2 = Stokes.phillips_wavenumber(v0spdws_phil2, Vspdws)
 
         # Wind speed
         wspd = vars["wind"]
@@ -217,9 +217,9 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
                     shww[i0,j0,k], p1ww[i0,j0,k], mdww[i0,j0,k], wspd[i0,j0,k])
 
             # Total sea Phillips Stokes profile 
-            vspd = Stokes.phillips_profile(v0spd[i0,j0,k], ktot[i0,j0,k], zvec)
-            veast = vspd*sind(sdir[i0,j0,k])
-            vnorth = vspd*cosd(sdir[i0,j0,k])
+            vspd_phil = Stokes.phillips_profile(v0spd[i0,j0,k], ktot[i0,j0,k], zvec)
+            veast_phil = vspd_phil*sind(sdir[i0,j0,k])
+            vnorth_phil = vspd_phil*cosd(sdir[i0,j0,k])
 
             # Swell monochromatic profile
             vspdsw = Stokes.mono_profile(v0spdsw[i0,j0,k], ksw[i0,j0,k], zvec)
@@ -237,16 +237,16 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
             vnorthsw_phil2 = vspdsw_phil2*cosd(mdts[i0,j0,k])
 
             # Wind sea Phillips profile adjusted to swell Phillips profile (the sum must match surface Stokes drift)
-            vspdws_phil2 = Stokes.phillips_profile(v0spdws_phil2[i0,j0,k], kws[i0,j0,k], zvec)
-            veastws_phil2 = vspdws_phil2*sind(sdirws[i0,j0,k])
-            vnorthws_phil2 = vspdws_phil2*cosd(sdirws[i0,j0,k])
+            vspdws_phil2 = Stokes.phillips_profile(v0spdws_phil2[i0,j0,k], kws_phil2[i0,j0,k], zvec)
+            veastws_phil2 = vspdws_phil2*sind(sdirws_phil2[i0,j0,k])
+            vnorthws_phil2 = vspdws_phil2*cosd(sdirws_phil2[i0,j0,k])
 
             # Loop over vertical
-            @printf(fout, "# veast_comb [m/s] vnorth_comb veastsw, vnorthsw, veastws, vnorthws, veast vnorth veastsw_phil2, vnorthsw_phil2, veastws_phil2, vnorthws_phil2\n")
+            @printf(fout, "# veast_comb [m/s] vnorth_comb veastsw vnorthsw veastws vnorthws veast_phil vnorth_phil veastsw_phil2 vnorthsw_phil2 veastws_phil2 vnorthws_phil2\n")
             for (i,z) in enumerate(zvec)
                 @printf(fout, "%5.2f %13.5e %13.5e %13.5e %13.5e %13.5e %13.5e %13.5e %13.5e %13.5e %13.5e %13.5e %13.5e\n", 
                 abs(z), veastsw[i]+veastws[i], vnorthsw[i]+vnorthws[i], veastsw[i], vnorthsw[i], veastws[i], vnorthws[i],
-                veast[i], vnorth[i], veastsw_phil2[i], vnorthsw_phil2[i], veastws_phil2[i], vnorthws_phil2[i])
+                veast_phil[i], vnorth_phil[i], veastsw_phil2[i], vnorthsw_phil2[i], veastws_phil2[i], vnorthws_phil2[i])
             end # for z
 
             @printf(fout, "\n") # A blank line
