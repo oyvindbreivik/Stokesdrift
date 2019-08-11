@@ -182,7 +182,7 @@ while !eof(f_comb) && !eof(f_full)
                 vnorthsw_phil2 = profile_comb[:,11]
                 veastws_phil2 = profile_comb[:,12]
                 vnorthws_phil2 = profile_comb[:,13]
-
+                #
                 # 3D view
                 fig=matplotlib.pyplot.figure()
                 legendtexts = ("Phillips (wind sea)", "Combined", "Monochromatic (swell)", "Full 2D", "Phillips (total sea)", "Phillips (swell)")
@@ -203,6 +203,7 @@ while !eof(f_comb) && !eof(f_full)
                 profile3dfig = "stokes_combined3d"
                 savefig("Fig/$profile3dfig.pdf")
                 savefig("Fig/$profile3dfig.png")
+                gcf()
 
                 # 2D bird's eye
                 fig2 = matplotlib.pyplot.figure()
@@ -220,6 +221,7 @@ while !eof(f_comb) && !eof(f_full)
                 profile2dfig = "stokes_combined2d"
                 savefig("Fig/$profile2dfig.pdf")
                 savefig("Fig/$profile2dfig.png")
+                gcf()
 
                 # Speed profile
                 fig3 = matplotlib.pyplot.figure()
@@ -237,6 +239,7 @@ while !eof(f_comb) && !eof(f_full)
                 profilefig = "stokes_combined_speed_profile"
                 savefig("Fig/$profilefig.pdf")
                 savefig("Fig/$profilefig.png")
+                gcf()
 
                 ### Phil2 figs below
 
@@ -253,10 +256,11 @@ while !eof(f_comb) && !eof(f_full)
                 legend(legendtexts, loc="upper left")
                 xlabel(L"$u_{east}$ [m/s]")
                 ylabel(L"$u_{north}$ [m/s]")
-                grid(fig2)
+                grid(fig4)
                 profile2dphil2fig = "stokes_combined2d_phil2"
                 savefig("Fig/$profile2dphil2fig.pdf")
                 savefig("Fig/$profile2dphil2fig.png")
+                gcf()
 
                 # Speed profile
                 fig5 = matplotlib.pyplot.figure()
@@ -269,10 +273,11 @@ while !eof(f_comb) && !eof(f_full)
                 legend(legendtexts,loc="lower right")
                 xlabel(L"$u_{speed}$ [m/s]")
                 ylabel(L"$z$ [m]")
-                grid(fig3)
+                grid(fig5)
                 profilephil2fig = "stokes_combined_speed_profile_phil2"
                 savefig("Fig/$profilephil2fig.pdf")
                 savefig("Fig/$profilephil2fig.png")
+                gcf()
 
             end # if
         else
