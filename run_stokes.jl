@@ -195,6 +195,13 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         # Wind sea wave number
         kws = Stokes.phillips_wavenumber(v0spdws, Vspdws)
 
+        # Wind sea Stokes parameters adjusted to Phillips swell parameters
+        v0eastws_phil2 = ust-v0eastsw_phil2
+        v0northws_phil2 = vst-v0northsw_phil2
+        sdirws_phil2 = atand.(v0eastws_phil2, v0northws_phil2)
+        v0spdws_phil2 = hypot.(v0eastws_phil2, v0northws_phil2)
+        kws_phil2 = Stokes.phillips_wavenumber(v0spdws_phil2, Vspdws)
+
         ### Alternatively, calculate swell and windsea Stokes surface drift speed given swell and windsea direction
 
         # Normalized vector components of swell and windsea direction
@@ -203,22 +210,18 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         wseast = sind.(mdww)
         wsnorth = cosd.(mdww)
 
+        # Calculate magnitude (speed) of Stokes surface swell and windsea vectors
+        #lbigswell = shts .> shww
+        # Must choose one or the other, depending on the magnitude
+        v0spdws = (swnorth.*ust-sweast.*vst)./(wseast.*swnorth-wsnorth.*sweast)
+        
         v0spdsw = (wsnorth.*ust-wseast.*vst)./(sweast.*wsnorth-swnorth.*wseast)
+        
+
+        # Calculate corresponding wavenumbers
         ksw = Stokes.mono_wavenumber(v0spdsw, Vspdsw)
         ksw_phil2 = Stokes.phillips_wavenumber(v0spdsw, Vspdsw)
-        v0spdws = (swnorth.*ust-sweast.*vst)./(wseast.*swnorth-wsnorth.*sweast)
         kws = Stokes.phillips_wavenumber(v0spdws, Vspdws)
-        #v0eastsw = v0spdsw.*sweast
-        #v0northsw = v0spdsw.*swnorth
-        #v0eastws = v0spdws.*wseast
-        #v0northws = v0spdws.*wsnorth
-
-        # Wind sea Stokes parameters adjusted to Phillips swell parameters
-        v0eastws_phil2 = ust-v0eastsw_phil2
-        v0northws_phil2 = vst-v0northsw_phil2
-        sdirws_phil2 = atand.(v0eastws_phil2, v0northws_phil2)
-        v0spdws_phil2 = hypot.(v0eastws_phil2, v0northws_phil2)
-        kws_phil2 = Stokes.phillips_wavenumber(v0spdws_phil2, Vspdws)
 
         # Wind speed
         wspd = vars["wind"]
@@ -229,6 +232,9 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
             # Lat, lon, date
             # Convert to real date and time by adding time units offset to number of hours from start
             t1 = t0+Dates.Hour(t)
+            println("CCC times=$times v0spdsw=$((v0spdsw[i0,j0,k])),
+            v0spdws=$((v0spdws[i0,j0,k])), ksw=$((ksw[i0,j0,k])),
+             ksw_phil2=$((ksw_phil2[i0,j0,k])), kws=$((kws[i0,j0,k]))")
             @printf(fout, "# %7.3f %8.4f %s\n", lats[j0], lons[i0], "$t1")
             # Transport header
             @printf(fout, "# Vspd Vspdsw Vspdws [m^2/s] ksw kws [rad/m] hm0 [m] tm01 [s] mwd [deg from N going to] shts p1ps mdts shww p1ww mdww wspd [m/s]\n")
@@ -254,6 +260,7 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
 
             # Phillips swell profile 
             #vspdsw_phil2 = Stokes.phillips_profile(v0spdsw_phil2[i0,j0,k], ksw[i0,j0,k], zvec)
+            # CCC sqrt(neg) domain error below
             vspdsw_phil2 = Stokes.phillips_profile(v0spdsw_phil2[i0,j0,k], ksw_phil2[i0,j0,k], zvec)
             veastsw_phil2 = vspdsw_phil2*sind(mdts[i0,j0,k])
             vnorthsw_phil2 = vspdsw_phil2*cosd(mdts[i0,j0,k])
