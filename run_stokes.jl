@@ -90,7 +90,7 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
     j0 = Int(ceil(lat-lats[1])/dlat)+1
 
     vars = Dict()
-    dry = 0.0
+    #dry = 0.0
 
     fout = open(outfile, "w")
 
@@ -102,7 +102,7 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
             scaling = ncgetatt(infile, varname, "scale_factor")
             ifield = ncread(infile, varname)
             miss=ncgetatt(infile, varname, "missing_value")
-            dry = ifield.==miss
+            global dry = ifield.==miss
             v = ifield*scaling .+ offset
             # Reset masked (land) to undef value
             v[dry] .= miss
@@ -202,7 +202,7 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         v0spdws_phil2 = hypot.(v0eastws_phil2, v0northws_phil2)
         kws_phil2 = Stokes.phillips_wavenumber(v0spdws_phil2, Vspdws)
 
-        ### Alternatively, calculate swell and windsea Stokes surface drift speed given swell and windsea direction
+      ### Alternatively, calculate swell and windsea Stokes surface drift speed given swell and windsea direction
 
         # Normalized vector components of swell and windsea direction
         sweast = sind.(mdts)
@@ -213,14 +213,47 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         # Calculate magnitude (speed) of Stokes surface swell and windsea vectors
         #lbigswell = shts .> shww
         # Must choose one or the other, depending on the magnitude
-        v0spdws = (swnorth.*ust-sweast.*vst)./(wseast.*swnorth-wsnorth.*sweast)
-        
         v0spdsw = (wsnorth.*ust-wseast.*vst)./(sweast.*wsnorth-swnorth.*wseast)
-        
+        v0spdws = (swnorth.*ust-sweast.*vst)./(wseast.*swnorth-wsnorth.*sweast)
+        #lneg = (v0spdsw .<= 0) .& (v0spdws .<= 0)
+        #if any(lneg)
+        #    println("Warning, both v0spdsw and v0spdws are negative in $(sum(lneg)) locations")
+        #end
+        lbigswell = v0spdsw .> v0spdws
+
+        # Swell and wind sea Stokes drift components
+        v0eastsw = v0spdsw.*sweast
+        v0northsw = v0spdsw.*swnorth
+        v0eastws = v0spdws.*wseast
+        v0northws = v0spdws.*wsnorth
+
+        # Let the Stokes swell component be the difference between the total Stokes drift and the wind sea part ...
+        v0eastsw[.!lbigswell] = ust[.!lbigswell] - v0eastws[.!lbigswell]
+        v0northsw[.!lbigswell] = vst[.!lbigswell] - v0northws[.!lbigswell]
+        # ... except where the swell surface Stokes drift is the bigger of the two
+        v0eastws[lbigswell] = ust[lbigswell] - v0eastsw[lbigswell]
+        v0northws[lbigswell] = vst[lbigswell] - v0northsw[lbigswell]
+
+        # Fix dry points
+        v0eastsw[dry] .= 0.0
+        v0northsw[dry] .= 0.0
+        v0eastws[dry] .= 0.0
+        v0northws[dry] .= 0.0
+
+        # Recompute surface Stokes drift speed
+
+        # Wind sea Stokes drift components
+        sdirws = atand.(v0eastws, v0northws)
+        v0spdws = hypot.(v0eastws, v0northws)
+        v0spdws_phil2 = hypot.(v0eastws, v0northws) # identical, just pleasing the code above
+        sdirsw = atand.(v0eastsw, v0northsw)
+        v0spdsw = hypot.(v0eastsw, v0northsw)
+        v0spdsw_phil2 = hypot.(v0eastsw, v0northsw) # identical to above, just for book keeping
 
         # Calculate corresponding wavenumbers
         ksw = Stokes.mono_wavenumber(v0spdsw, Vspdsw)
-        ksw_phil2 = Stokes.phillips_wavenumber(v0spdsw, Vspdsw)
+        ksw_phil2 = Stokes.phillips_wavenumber(v0spdsw_phil2, Vspdsw)
+
         kws = Stokes.phillips_wavenumber(v0spdws, Vspdws)
 
         # Wind speed
@@ -232,15 +265,15 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
             # Lat, lon, date
             # Convert to real date and time by adding time units offset to number of hours from start
             t1 = t0+Dates.Hour(t)
-            println("CCC times=$times v0spdsw=$((v0spdsw[i0,j0,k])),
-            v0spdws=$((v0spdws[i0,j0,k])), ksw=$((ksw[i0,j0,k])),
-             ksw_phil2=$((ksw_phil2[i0,j0,k])), kws=$((kws[i0,j0,k]))")
+            #println("CCC times=$times v0spdsw=$((v0spdsw[i0,j0,k])),
+            #v0spdws=$((v0spdws[i0,j0,k])), ksw=$((ksw[i0,j0,k])),
+            # ksw_phil2=$((ksw_phil2[i0,j0,k])), kws=$((kws[i0,j0,k]))")
             @printf(fout, "# %7.3f %8.4f %s\n", lats[j0], lons[i0], "$t1")
             # Transport header
             @printf(fout, "# Vspd Vspdsw Vspdws [m^2/s] ksw kws [rad/m] hm0 [m] tm01 [s] mwd [deg from N going to] shts p1ps mdts shww p1ww mdww wspd [m/s]\n")
             @printf(fout, "# %11.4e %11.4e %11.4e %11.4e %11.4e %6.2f %6.2f %8.2f %6.2f %6.2f %8.2f %6.2f %6.2f %8.2f %6.2f\n",
                     Vspd[i0,j0,k], Vspdsw[i0,j0,k], Vspdws[i0,j0,k], ksw[i0,j0,k], kws[i0,j0,k],
-                    hm0[i0,j0,k], tm01[i0,j0,k], mwd[i0,j0,k], shts[i0,j0,k], p1ps[i0,j0,k], mdts[i0,j0,k],
+                    hm0[i0,j0,k], tm01[i0,j0,k], mwd[i0,j0,k], shts[i0,j0,k], p1ps[i0,j0,k], sdirsw[i0,j0,k],
                     shww[i0,j0,k], p1ww[i0,j0,k], mdww[i0,j0,k], wspd[i0,j0,k])
 
             # Total sea Phillips Stokes profile 
@@ -250,8 +283,8 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
 
             # Swell monochromatic profile
             vspdsw = Stokes.mono_profile(v0spdsw[i0,j0,k], ksw[i0,j0,k], zvec)
-            veastsw = vspdsw*sind(mdts[i0,j0,k])
-            vnorthsw = vspdsw*cosd(mdts[i0,j0,k])
+            veastsw = vspdsw*sind(sdirsw[i0,j0,k])
+            vnorthsw = vspdsw*cosd(sdirsw[i0,j0,k])
 
             # Wind sea Phillips profile
             vspdws = Stokes.phillips_profile(v0spdws[i0,j0,k], kws[i0,j0,k], zvec)
@@ -259,12 +292,9 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
             vnorthws = vspdws*cosd(sdirws[i0,j0,k])
 
             # Phillips swell profile 
-            #vspdsw_phil2 = Stokes.phillips_profile(v0spdsw_phil2[i0,j0,k], ksw[i0,j0,k], zvec)
-            # CCC sqrt(neg) domain error below
             vspdsw_phil2 = Stokes.phillips_profile(v0spdsw_phil2[i0,j0,k], ksw_phil2[i0,j0,k], zvec)
-            veastsw_phil2 = vspdsw_phil2*sind(mdts[i0,j0,k])
-            vnorthsw_phil2 = vspdsw_phil2*cosd(mdts[i0,j0,k])
-
+            veastsw_phil2 = vspdsw_phil2*sind(sdirsw[i0,j0,k])
+            vnorthsw_phil2 = vspdsw_phil2*cosd(sdirsw[i0,j0,k])
 
             # Wind sea Phillips profile adjusted to swell Phillips profile (the sum must match surface Stokes drift)
             vspdws_phil2 = Stokes.phillips_profile(v0spdws_phil2[i0,j0,k], kws_phil2[i0,j0,k], zvec)
