@@ -17,13 +17,14 @@ using PyPlot
 using PyCall
 using Printf
 
-#basemap = pyimport("mpl_toolkits.basemap")
 pyplt = pyimport("matplotlib.pyplot")
 mplot3d = pyimport("mpl_toolkits.mplot3d")
 
 profileplotting = true
 statplotting = false
+transplotting = false
 infiles = ["Stokesdrift/run_stokes_12h.asc", "../Pro/MyWave/Stokes_profile/output_stokes_profile_erai_natl_60N20W_2010.asc"]
+NREC = 365
 NLEV = 300
 NPAR_COMB = 13
 NPAR_FULL = 5
@@ -36,31 +37,54 @@ irec0 = 199*2+1 # -07-18
 
 # Combined profile v full profile
 # Velocity stats
-meaneast_comb = []
-rmseast_comb = []
-stdeast_comb = []
-meannorth_comb = []
-rmsnorth_comb = []
-stdnorth_comb = []
-# Speed stats
-meanspd_comb = []
-rmsspd_comb = []
-stdspd_comb = []
 
-### Phllips profile vs full profile
+meaneast_comb = [0.0,]
+rmseast_comb = similar(meaneast_comb)
+stdeast_comb = similar(meaneast_comb)
+meannorth_comb = similar(meaneast_comb)
+rmsnorth_comb = similar(meaneast_comb)
+stdnorth_comb = similar(meaneast_comb)
+# Speed stats
+meanspd_comb = similar(meaneast_comb)
+rmsspd_comb = similar(meaneast_comb)
+stdspd_comb = similar(meaneast_comb)
+
+### Phillips profile vs full profile
+
+# Stokes transport
+veast_full_transp = similar(meaneast_comb)
+vnorth_full_transp = similar(meaneast_comb)
+vspd_full_transp = similar(meaneast_comb)
 
 # Velocity stats
-meaneast_phil = []
-rmseast_phil = []
-stdeast_phil = []
-meannorth_phil = []
-rmsnorth_phil = []
-stdnorth_phil = []
+meaneast_phil = similar(meaneast_comb)
+rmseast_phil = similar(meaneast_comb)
+stdeast_phil = similar(meaneast_comb)
+meaneast_comb_phil = similar(meaneast_comb)
+rmseast_comb_phil = similar(meaneast_comb)
+stdeast_comb_phil = similar(meaneast_comb)
+meannorth_phil = similar(meaneast_comb)
+rmsnorth_phil = similar(meaneast_comb)
+stdnorth_phil = similar(meaneast_comb)
+meannorth_comb_phil = similar(meaneast_comb)
+rmsnorth_comb_phil = similar(meaneast_comb)
+stdnorth_comb_phil = similar(meaneast_comb)
 
 # Speed stats
-meanspd_phil = []
-rmsspd_phil = []
-stdspd_phil = []
+meanspd_comb = similar(meaneast_comb)
+rmsspd_comb = similar(meaneast_comb)
+stdspd_comb = similar(meaneast_comb)
+meanspd_phil = similar(meaneast_comb)
+rmsspd_phil = similar(meaneast_comb)
+stdspd_phil = similar(meaneast_comb)
+meanspd_comb_phil = similar(meaneast_comb)
+rmsspd_comb_phil = similar(meaneast_comb)
+stdspd_comb_phil = similar(meaneast_comb)
+
+# Transport stats
+nmadspd_comb = similar(meaneast_comb) 
+nmadspd_phil = similar(meaneast_comb) 
+nmadspd_comb_phil = similar(meaneast_comb) 
 
 # Open files
 f_comb = open(infiles[1])
@@ -75,14 +99,13 @@ while !eof(f_comb) && !eof(f_full)
     ### Profile from combined parametric spectrum
 
     # Read header lines
-    global irec += 1
+    global irec += 1 # crazy scope rules
     ln = readline(f_comb)
     (lat_comb, lon_comb) = [parse(Float64, xs) for xs in split(ln)[2:3]]
     date_comb = split(ln)[4]
     ln2 = readline(f_comb)
     ln3 = readline(f_comb)
     (Vspd, Vspdsw, ksw, mwd, p1ps, mdts) = [parse(Float64, xs) for xs in split(ln3)[[2,3,5,9,10,11]]]
-    #println("CCC irec=$irec, Vspd=$Vspd, mwd=$mwd, p1ps=$p1ps, mdts=$mdts")
     ln4 = readline(f_comb)
 
     # Loop over record
@@ -99,20 +122,10 @@ while !eof(f_comb) && !eof(f_full)
     veast_phil = profile_comb[:,8]
     vnorth_phil = profile_comb[:,9]
     vspd_phil = hypot.(veast_phil, vnorth_phil)
-
-    # Compute Phillips profile from total parameters for comparison with combined and full profiles
-    #k_phil = Stokes.phillips_wavenumber(v0spd, Vspd)
-    #vspd_phil = Stokes.phillips_profile(v0spd, k_phil, zvec)
-    #sdir = atand(veast_comb[1], vnorth_comb[1])
-    #veast_phil = vspd_phil*sind(sdir)
-    #vnorth_phil = vspd_phil*cosd(sdir)
-
-    # Compute Phillips swell profile in addition to monochromatic swell profile
-    # k = v0.*(1.0 .- 2beta/3)./2V, so:
-    #v0spdsw_phil = 6ksw*Vspdsw
-    #vspdsw_phil = Stokes.phillips_profile(v0spdsw_phil, ksw, zvec)
-    #veastsw_phil = vspdsw_phil*sind(mdts)
-    #vnorthsw_phil = vspdsw_phil*cosd(mdts)
+    # Combined Phillips swell and wind sea profiles
+    veast_comb_phil = profile_comb[:,10] + profile_comb[:,12] 
+    vnorth_comb_phil = profile_comb[:,11] + profile_comb[:,13] 
+    vspd_comb_phil = hypot.(veast_comb_phil, vnorth_comb_phil)
 
     # Read separator line before next record
     ln = readline(f_comb)
@@ -130,7 +143,6 @@ while !eof(f_comb) && !eof(f_full)
         ln3f = readline(f_full)
         # Select location matching that of profile_comb, skip 12UTC due to inconsistency with spectra
         if lon_full≈lon_comb && lat_full≈lat_comb && irec%2==1
-            #println("CCC lon_full, lat_full, irec, date_comb, date_full, time_full, $lon_full $lat_full $irec $date_comb $date_full $time_full")
             # Loop over record
             for k = 1:NLEV
                 ln = readline(f_full)
@@ -155,6 +167,13 @@ while !eof(f_comb) && !eof(f_full)
             push!(rmsnorth_phil, std(vnorth_phil - vnorth_full, mean=0.0))
             push!(stdnorth_phil, std(vnorth_phil - vnorth_full))
 
+            push!(meaneast_comb_phil, mean(veast_comb_phil - veast_full))
+            push!(rmseast_comb_phil, std(veast_comb_phil - veast_full, mean=0.0))
+            push!(stdeast_comb_phil, std(veast_comb_phil - veast_full))
+            push!(meannorth_comb_phil, mean(vnorth_comb_phil - vnorth_full))
+            push!(rmsnorth_comb_phil, std(vnorth_comb_phil - vnorth_full, mean=0.0))
+            push!(stdnorth_comb_phil, std(vnorth_comb_phil - vnorth_full))
+
             # Speed stats
             push!(meanspd_comb, mean(vspd_comb - vspd_full))
             push!(rmsspd_comb, std(vspd_comb - vspd_full, mean=0.0))
@@ -162,13 +181,24 @@ while !eof(f_comb) && !eof(f_full)
             push!(meanspd_phil, mean(vspd_phil - vspd_full))
             push!(rmsspd_phil, std(vspd_phil - vspd_full, mean=0.0))
             push!(stdspd_phil, std(vspd_phil - vspd_full))
+            push!(meanspd_comb_phil, mean(vspd_comb_phil - vspd_full))
+            push!(rmsspd_comb_phil, std(vspd_comb_phil - vspd_full, mean=0.0))
+            push!(stdspd_comb_phil, std(vspd_comb_phil - vspd_full))
 
-            ### Plot profiles for selected time
+            # Integrate transport, note sign due to ordering of vectors
+            push!(veast_full_transp, -integrate(zvec, veast_full))
+            push!(vnorth_full_transp, -integrate(zvec, vnorth_full))
+            transp = hypot.(veast_full_transp[end], vnorth_full_transp[end])
+            push!(vspd_full_transp, transp)
+
+            # Normalized transport speed stats
+            push!(nmadspd_comb, -integrate(zvec, abs.(vspd_comb - vspd_full))/transp)
+            push!(nmadspd_phil, -integrate(zvec, abs.(vspd_phil - vspd_full))/transp)
+            push!(nmadspd_comb_phil, -integrate(zvec, abs.(vspd_comb_phil - vspd_full))/transp)
+
+           ### Plot profiles for selected time
 
             if profileplotting && irec==irec0
-                #println(ln3)
-                #println(ln3f)
-
                 # Swell and wind sea profiles
                 veast_comb = profile_comb[:,2]
                 vnorth_comb = profile_comb[:,3]
@@ -186,6 +216,8 @@ while !eof(f_comb) && !eof(f_full)
                 # 3D view
                 fig=matplotlib.pyplot.figure()
                 legendtexts = ("Phillips (wind sea)", "Combined", "Monochromatic (swell)", "Full 2D", "Phillips (total sea)", "Phillips (swell)")
+                legendtexts = ("Phillips (wind sea)", "Combined", "Monochromatic (swell)", "Full 2D", "Phillips (total sea)", "Phillips (swell)")
+
                 titletext = "Date: $date_comb " * @sprintf("lon: %7.2f, lat: %7.2f", lon_comb, lat_comb)
                 ax = fig.gca(projection="3d")
                 plot(veastws, vnorthws, zvec)
@@ -289,10 +321,11 @@ while !eof(f_comb) && !eof(f_full)
         # Read separator line
     end # for ipos
 
-    # CCC Break after 5 while testing
-    #if irec > 5
-    #    break
-    #end
+    #= CCC Break after 5 while testing
+    if irec > 5
+        break
+    end 
+    =#
 end # while
 
 if statplotting
@@ -305,15 +338,14 @@ if statplotting
     xstrvel = "Velocity [m s\$^{-1}\$]"
     xstrspd = "Speed [m s\$^{-1}\$]"
     numstr = "\$n\$ = $n"
-    labels = ["Phillips profile", "Combined profile"]
+    labels = ["Phillips profile", "Combined profile", "Combined Phillips profile"]
 
     figure()
-    totalmeaneast_phil = mean(meaneast_phil)
-    totalmeaneast_comb = mean(meaneast_comb)
     hist(meaneast_phil, bins=bins)
     hist(meaneast_comb, bins=bins)
+    hist(meaneast_comb_phil, bins=bins)
     xlabel(xstrvel)
-    title("Mean diff, east comp, " * @sprintf("Phil: %7.5f ", mean(meaneast_phil)) * @sprintf("Comb: %7.5f", mean(meaneast_comb)) )
+    title("Mean diff, east comp, " * @sprintf("Phil: %7.5f ", mean(meaneast_phil)) * @sprintf("Comb: %7.5f ", mean(meaneast_comb)) * @sprintf("Comb Phil: %7.5f", mean(meaneast_comb_phil)) )
     legend(labels)
     gcf()
     fname = pth*"meaneast"
@@ -323,8 +355,9 @@ if statplotting
     figure()
     hist(rmseast_phil, bins=plusbins)
     hist(rmseast_comb, bins=plusbins)
+    hist(rmseast_comb_phil, bins=plusbins)
     xlabel(xstrvel)
-    title("RMS diff, east comp, " * @sprintf("Phil: %7.5f ", std(rmseast_phil, mean=0.0)) * @sprintf("Comb: %7.5f", std(rmseast_comb, mean=0.0)) )
+    title("RMS diff, east comp, " * @sprintf("Phil: %7.5f ", mean(rmseast_phil)) * @sprintf("Comb: %7.5f ", mean(rmseast_comb)) * @sprintf("Comb Phil: %7.5f", mean(rmseast_comb_phil)) )
     legend(labels)
     gcf()
     fname = pth*"rmseast"
@@ -332,21 +365,11 @@ if statplotting
     savefig(fname*".pdf")
 
     figure()
-    hist(stdeast_phil)
-    hist(stdeast_comb)
-    xlabel(xstrvel)
-    title("Stdev diff, east comp, " * @sprintf("Phil: %7.5f ", std(stdeast_phil)) * @sprintf("Comb: %7.5f", std(stdeast_comb)) )
-    legend(labels)
-    gcf()
-    fname = pth*"stdeast"
-    savefig(fname*".png")
-    savefig(fname*".pdf")
-
-    figure()
     hist(meannorth_phil, bins=bins)
     hist(meannorth_comb, bins=bins)
+    hist(meannorth_comb_phil, bins=bins)
     xlabel(xstrvel)
-    title("Mean diff, north comp, " * @sprintf("Phil: %7.5f ", mean(meannorth_phil)) * @sprintf("Comb: %7.5f", mean(meannorth_comb)) )
+    title("Mean diff, north comp, " * @sprintf("Phil: %7.5f ", mean(meannorth_phil)) * @sprintf("Comb: %7.5f ", mean(meannorth_comb)) * @sprintf("Comb Phil: %7.5f", mean(meannorth_comb_phil)) )
     legend(labels)
     gcf()
     fname = pth*"meannorth"
@@ -356,8 +379,9 @@ if statplotting
     figure()
     hist(rmsnorth_phil, bins=plusbins)
     hist(rmsnorth_comb, bins=plusbins)
+    hist(rmsnorth_comb_phil, bins=plusbins)
     xlabel(xstrvel)
-    title("RMS diff, north comp, " * @sprintf("Phil: %7.5f ", std(rmsnorth_phil, mean=0.0)) * @sprintf("Comb: %7.5f", std(rmsnorth_comb, mean=0.0)) )
+    title("RMS diff, north comp, " * @sprintf("Phil: %7.5f ", mean(rmsnorth_phil)) * @sprintf("Comb: %7.5f ", mean(rmsnorth_comb)) * @sprintf("Comb Phil: %7.5f", mean(rmsnorth_comb_phil)) )
     legend(labels)
     gcf()
     fname = pth*"rmsnorth"
@@ -365,21 +389,11 @@ if statplotting
     savefig(fname*".pdf")
 
     figure()
-    hist(stdnorth_phil)
-    hist(stdnorth_comb)
-    xlabel(xstrvel)
-    title("Stdev diff, north comp, " * @sprintf("Phil: %7.5f ", std(stdnorth_phil)) * @sprintf("Comb: %7.5f", std(stdnorth_comb)) )
-    legend(labels)
-    gcf()
-    fname = pth*"stdnorth"
-    savefig(fname*".png")
-    savefig(fname*".pdf")
-
-    figure()
     hist(meanspd_phil, bins=bins)
     hist(meanspd_comb, bins=bins)
+    hist(meanspd_comb_phil, bins=bins)
     xlabel(xstrspd)
-    title("Mean diff, speed, " * @sprintf("Phil: %7.5f ", mean(meanspd_phil)) * @sprintf("Comb: %7.5f", mean(meanspd_comb)) )
+    title("Mean diff, speed, " * @sprintf("Phil: %7.5f ", mean(meanspd_phil)) * @sprintf("Comb: %7.5f ", mean(meanspd_comb)) * @sprintf("Comb Phil: %7.5f", mean(meanspd_comb_phil)) )
     legend(labels)
     gcf()
     fname = pth*"meanspd"
@@ -389,23 +403,50 @@ if statplotting
     figure()
     hist(rmsspd_phil, bins=plusbins)
     hist(rmsspd_comb, bins=plusbins)
+    hist(rmsspd_comb_phil, bins=plusbins)
     xlabel(xstrspd)
-    title("RMS diff, speed, " * @sprintf("Phil: %7.5f ", std(rmsspd_phil, mean=0.0)) * @sprintf("Comb: %7.5f", std(rmsspd_comb, mean=0.0)) )
+    title("RMS diff, speed, " * @sprintf("Phil: %7.5f ", mean(rmsspd_phil)) * @sprintf("Comb: %7.5f ", mean(rmsspd_comb)) * @sprintf("Comb Phil: %7.5f", mean(rmsspd_comb_phil)) )
     legend(labels)
     gcf()
     fname = pth*"rmsspd"
     savefig(fname*".png")
     savefig(fname*".pdf")
 
-    figure()
-    hist(stdspd_phil, bins=plusbins)
-    hist(stdspd_comb, bins=plusbins)
-    xlabel(xstrspd)
-    title("Stdev diff, speed, " * @sprintf("Phil: %7.5f ", std(rmsspd_phil)) * @sprintf("Comb: %7.5f", std(rmsspd_comb)) )
-    legend(labels)
+end # if statplotting
+
+if transplotting
+
+    pth = "Fig/"
+    xstrtransp = "Normalized transport"
+    textpos = (0.05, 80.0)
+    col = "k"
+    ylims = (0, 100)
+    transbins = 0:0.1:1.6
+    figtransp = matplotlib.pyplot.figure()
+    subplot(311)
+    hist(nmadspd_phil, bins=transbins, color=col)
+    xlim(transbins[1], transbins[end])
+    ylim(ylims...)
+    println("NMAD transport, " * @sprintf("Phil: %7.5f ", mean(nmadspd_phil)) * @sprintf("Comb: %7.5f ", mean(nmadspd_comb)) * @sprintf("Comb Phil: %7.5f", mean(nmadspd_comb_phil)) )
+    title(L"Normalized difference from ERA-I profiles, $\delta v = V^{-1} \int_{-30 m}^0 \, |v_{mod}-v| \, dz$", fontsize=12)
+    text(textpos..., "(a) Phillips unidirectional profile")
+    
+    subplot(312)
+    hist(nmadspd_comb, bins=transbins, color=col)
+    xlim(transbins[1], transbins[end])
+    ylim(ylims...)
+    ylabel("Number of occurrences")
+    text(textpos..., "(b) Phillips (wind sea) and monochromatic (swell) directional profile")
+
+    subplot(313)
+    hist(nmadspd_comb_phil, bins=transbins, color=col) 
+    xlim(transbins[1], transbins[end])
+    ylim(ylims...)
+    text(0.3, textpos[2], "(c) Phillips wind sea and swell directional profile")
+    xlabel(xstrtransp)
     gcf()
-    fname = pth*"stdspd"
+    fname = pth*"nmadspd"
     savefig(fname*".png")
     savefig(fname*".pdf")
 
-end # if plotting
+end # if transplotting

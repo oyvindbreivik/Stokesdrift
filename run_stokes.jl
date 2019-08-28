@@ -160,13 +160,6 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         Veastsw = Vspdsw.*sind.(mdts)
         Vnorthsw = Vspdsw.*cosd.(mdts)
 
-        # Swell parameters for Phillips profile
-        # k = v0.*(1.0 .- 2beta/3)./2V, so:
-        ksw_phil2 = ksw
-        v0spdsw_phil2 = 6ksw_phil2.*Vspdsw
-        v0eastsw_phil2 = v0spdsw_phil2.*sind.(mdts)
-        v0northsw_phil2 = v0spdsw_phil2.*cosd.(mdts)
-
         ### Wind sea
         # Significant height of wind waves
         shww = vars["shww"]
@@ -196,11 +189,11 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         kws = Stokes.phillips_wavenumber(v0spdws, Vspdws)
 
         # Wind sea Stokes parameters adjusted to Phillips swell parameters
-        v0eastws_phil2 = ust-v0eastsw_phil2
-        v0northws_phil2 = vst-v0northsw_phil2
-        sdirws_phil2 = atand.(v0eastws_phil2, v0northws_phil2)
-        v0spdws_phil2 = hypot.(v0eastws_phil2, v0northws_phil2)
-        kws_phil2 = Stokes.phillips_wavenumber(v0spdws_phil2, Vspdws)
+        #v0eastws_phil2 = ust-v0eastsw_phil2
+        #v0northws_phil2 = vst-v0northsw_phil2
+        #sdirws_phil2 = atand.(v0eastws_phil2, v0northws_phil2)
+        #v0spdws_phil2 = hypot.(v0eastws_phil2, v0northws_phil2)
+        #kws_phil2 = Stokes.phillips_wavenumber(v0spdws_phil2, Vspdws)
 
       ### Alternatively, calculate swell and windsea Stokes surface drift speed given swell and windsea direction
 
@@ -240,21 +233,25 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         v0eastws[dry] .= 0.0
         v0northws[dry] .= 0.0
 
-        # Recompute surface Stokes drift speed
+      ### Recompute surface Stokes drift speed
 
-        # Wind sea Stokes drift components
-        sdirws = atand.(v0eastws, v0northws)
-        v0spdws = hypot.(v0eastws, v0northws)
-        v0spdws_phil2 = hypot.(v0eastws, v0northws) # identical, just pleasing the code above
+        # Swell Stokes drift 
         sdirsw = atand.(v0eastsw, v0northsw)
         v0spdsw = hypot.(v0eastsw, v0northsw)
-        v0spdsw_phil2 = hypot.(v0eastsw, v0northsw) # identical to above, just for book keeping
+        v0spdsw_phil2 = hypot.(v0eastsw, v0northsw) # identical to above, just for book-keeping
+
+        # Wind sea Stokes drift
+        sdirws = atand.(v0eastws, v0northws)
+        sdirws_phil2 = atand.(v0eastws, v0northws)  # identical to above, just book-keeping
+        v0spdws = hypot.(v0eastws, v0northws)
+        v0spdws_phil2 = hypot.(v0eastws, v0northws) # identical to above, just pleasing the code above
 
         # Calculate corresponding wavenumbers
         ksw = Stokes.mono_wavenumber(v0spdsw, Vspdsw)
         ksw_phil2 = Stokes.phillips_wavenumber(v0spdsw_phil2, Vspdsw)
 
         kws = Stokes.phillips_wavenumber(v0spdws, Vspdws)
+        kws_phil2 = Stokes.phillips_wavenumber(v0spdws_phil2, Vspdws) # identical to above ...
 
         # Wind speed
         wspd = vars["wind"]
