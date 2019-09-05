@@ -20,8 +20,8 @@ using Printf
 pyplt = pyimport("matplotlib.pyplot")
 mplot3d = pyimport("mpl_toolkits.mplot3d")
 
-profileplotting = true
-statplotting = false
+profileplotting = false
+statplotting = true
 transplotting = false
 infiles = ["Stokesdrift/run_stokes_12h.asc", "../Pro/MyWave/Stokes_profile/output_stokes_profile_erai_natl_60N20W_2010.asc"]
 NREC = 365
@@ -38,7 +38,7 @@ irec0 = 199*2+1 # -07-18
 # Combined profile v full profile
 # Velocity stats
 
-meaneast_comb = [0.0,]
+meaneast_comb = Float64[]
 rmseast_comb = similar(meaneast_comb)
 stdeast_comb = similar(meaneast_comb)
 meannorth_comb = similar(meaneast_comb)
@@ -216,16 +216,16 @@ while !eof(f_comb) && !eof(f_full)
                 # 3D view
                 fig=matplotlib.pyplot.figure()
                 legendtexts = ("Phillips (wind sea)", "Combined", "Monochromatic (swell)", "Full 2D", "Phillips (total sea)", "Phillips (swell)")
-                legendtexts = ("Phillips (wind sea)", "Combined", "Monochromatic (swell)", "Full 2D", "Phillips (total sea)", "Phillips (swell)")
+                #legendtexts = ("Phillips (wind sea)", "Combined", "Monochromatic (swell)", "Full 2D", "Phillips (total sea)", "Phillips (swell)")
 
-                titletext = "Date: $date_comb " * @sprintf("lon: %7.2f, lat: %7.2f", lon_comb, lat_comb)
+                titletext = "Date: $date_comb " * @sprintf("lat: %7.2f, lon: %7.2f", lat_comb, lon_comb)
                 ax = fig.gca(projection="3d")
                 plot(veastws, vnorthws, zvec)
                 plot(veast_comb, vnorth_comb, zvec)
                 plot(veastsw, vnorthsw, zvec)
                 plot(veast_full, vnorth_full, zvec)
                 plot(veast_phil, vnorth_phil, zvec)
-                plot(veastsw_phil2, vnorthsw_phil2, zvec)
+                #plot(veastsw_phil2, vnorthsw_phil2, zvec)
                 title(titletext)
                 legend(legendtexts,loc="center left")
                 xlabel(L"$u_{east}$ [m/s]")
@@ -243,6 +243,8 @@ while !eof(f_comb) && !eof(f_full)
                 plot(veastsw, vnorthsw)
                 plot(veast_full, vnorth_full)
                 plot(veast_phil, vnorth_phil)
+                axis("image")
+                #pyplt.axes().set_aspect("equal", "datalim")
                 title(titletext)
                 legend(legendtexts,loc="upper left")
                 xlabel(L"$u_{east}$ [m/s]")
@@ -275,12 +277,12 @@ while !eof(f_comb) && !eof(f_full)
                 # 2D bird's eye phil2 (two Phillips profiles)
                 fig4 = matplotlib.pyplot.figure()
                 legendtexts = ("Phillips (wind sea)", "Combined", "Phillips (swell)", "Full 2D", "Phillips (total sea)", "Phillips (swell)")
-                titletext = "Phil2 Date: $date_comb " * @sprintf("lon: %7.2f, lat: %7.2f", lon_comb, lat_comb)
                 plot(veastws_phil2, vnorthws_phil2)
                 plot(veastsw_phil2+veastws_phil2, vnorthsw_phil2+vnorthws_phil2)
                 plot(veastsw_phil2, vnorthsw_phil2)
                 plot(veast_full, vnorth_full)
                 plot(veast_phil, vnorth_phil)
+                axis("image")
                 title(titletext)
                 legend(legendtexts, loc="upper left")
                 xlabel(L"$u_{east}$ [m/s]")
@@ -331,7 +333,7 @@ end # while
 if statplotting
     n = length(stdeast_comb)
     bins = -0.05:0.001:0.05
-    plusbins = 0:0.001:0.05
+    plusbins = 0:0.001:0.03
     pth = "Fig/"
 
     # East figures
@@ -353,9 +355,12 @@ if statplotting
     savefig(fname*".pdf")
 
     figure()
+    ylims = (0, 120)
     hist(rmseast_phil, bins=plusbins)
     hist(rmseast_comb, bins=plusbins)
     hist(rmseast_comb_phil, bins=plusbins)
+    xlim(plusbins[1], plusbins[end])
+    ylim(ylims...)
     xlabel(xstrvel)
     title("RMS diff, east comp, " * @sprintf("Phil: %7.5f ", mean(rmseast_phil)) * @sprintf("Comb: %7.5f ", mean(rmseast_comb)) * @sprintf("Comb Phil: %7.5f", mean(rmseast_comb_phil)) )
     legend(labels)
@@ -364,6 +369,7 @@ if statplotting
     savefig(fname*".png")
     savefig(fname*".pdf")
 
+    #=
     figure()
     hist(meannorth_phil, bins=bins)
     hist(meannorth_comb, bins=bins)
@@ -375,11 +381,14 @@ if statplotting
     fname = pth*"meannorth"
     savefig(fname*".png")
     savefig(fname*".pdf")
+    =#
 
     figure()
     hist(rmsnorth_phil, bins=plusbins)
     hist(rmsnorth_comb, bins=plusbins)
     hist(rmsnorth_comb_phil, bins=plusbins)
+    xlim(plusbins[1], plusbins[end])
+    ylim(ylims...)
     xlabel(xstrvel)
     title("RMS diff, north comp, " * @sprintf("Phil: %7.5f ", mean(rmsnorth_phil)) * @sprintf("Comb: %7.5f ", mean(rmsnorth_comb)) * @sprintf("Comb Phil: %7.5f", mean(rmsnorth_comb_phil)) )
     legend(labels)
@@ -388,6 +397,7 @@ if statplotting
     savefig(fname*".png")
     savefig(fname*".pdf")
 
+    #=
     figure()
     hist(meanspd_phil, bins=bins)
     hist(meanspd_comb, bins=bins)
@@ -399,11 +409,14 @@ if statplotting
     fname = pth*"meanspd"
     savefig(fname*".png")
     savefig(fname*".pdf")
+    =#
 
     figure()
     hist(rmsspd_phil, bins=plusbins)
     hist(rmsspd_comb, bins=plusbins)
     hist(rmsspd_comb_phil, bins=plusbins)
+    xlim(plusbins[1], plusbins[end])
+    ylim(ylims...)
     xlabel(xstrspd)
     title("RMS diff, speed, " * @sprintf("Phil: %7.5f ", mean(rmsspd_phil)) * @sprintf("Comb: %7.5f ", mean(rmsspd_comb)) * @sprintf("Comb Phil: %7.5f", mean(rmsspd_comb_phil)) )
     legend(labels)
