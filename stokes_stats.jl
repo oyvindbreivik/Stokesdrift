@@ -24,6 +24,7 @@ profileplotting = false
 statplotting = true
 transplotting = false
 infiles = ["Stokesdrift/run_stokes_12h.asc", "../Pro/MyWave/Stokes_profile/output_stokes_profile_erai_natl_60N20W_2010.asc"]
+infiles = ["Stokesdrift/run_stokes_12h_short.asc", "Stokesdrift/output_stokes_profile_erai_natl_60N20W_short.asc"]
 NREC = 365
 NLEV = 300
 NPAR_COMB = 13
