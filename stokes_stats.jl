@@ -20,11 +20,11 @@ using Printf
 pyplt = pyimport("matplotlib.pyplot")
 mplot3d = pyimport("mpl_toolkits.mplot3d")
 
-profileplotting = false
-statplotting = true
+profileplotting = true
+statplotting = false
 transplotting = false
 infiles = ["Stokesdrift/run_stokes_12h.asc", "../Pro/MyWave/Stokes_profile/output_stokes_profile_erai_natl_60N20W_2010.asc"]
-infiles = ["Stokesdrift/run_stokes_12h_short.asc", "Stokesdrift/output_stokes_profile_erai_natl_60N20W_short.asc"]
+infiles = ["Stokesdrift/run_stokes_short.asc", "Stokesdrift/output_stokes_profile_erai_natl_60N20W_short.asc"]
 NREC = 365
 NLEV = 300
 NPAR_COMB = 13
@@ -83,9 +83,9 @@ rmsspd_comb_phil = similar(meaneast_comb)
 stdspd_comb_phil = similar(meaneast_comb)
 
 # Transport stats
-nmadspd_comb = similar(meaneast_comb) 
-nmadspd_phil = similar(meaneast_comb) 
-nmadspd_comb_phil = similar(meaneast_comb) 
+nmadspd_comb = similar(meaneast_comb)
+nmadspd_phil = similar(meaneast_comb)
+nmadspd_comb_phil = similar(meaneast_comb)
 
 # Open files
 f_comb = open(infiles[1])
@@ -124,8 +124,8 @@ while !eof(f_comb) && !eof(f_full)
     vnorth_phil = profile_comb[:,9]
     vspd_phil = hypot.(veast_phil, vnorth_phil)
     # Combined Phillips swell and wind sea profiles
-    veast_comb_phil = profile_comb[:,10] + profile_comb[:,12] 
-    vnorth_comb_phil = profile_comb[:,11] + profile_comb[:,13] 
+    veast_comb_phil = profile_comb[:,10] + profile_comb[:,12]
+    vnorth_comb_phil = profile_comb[:,11] + profile_comb[:,13]
     vspd_comb_phil = hypot.(veast_comb_phil, vnorth_comb_phil)
 
     # Read separator line before next record
@@ -327,7 +327,7 @@ while !eof(f_comb) && !eof(f_full)
     #= CCC Break after 5 while testing
     if irec > 5
         break
-    end 
+    end
     =#
 end # while
 
@@ -444,7 +444,7 @@ if transplotting
     println("NMAD transport, " * @sprintf("Phil: %7.5f ", mean(nmadspd_phil)) * @sprintf("Comb: %7.5f ", mean(nmadspd_comb)) * @sprintf("Comb Phil: %7.5f", mean(nmadspd_comb_phil)) )
     title(L"Normalized difference from ERA-I profiles, $\delta v = V^{-1} \int_{-30 m}^0 \, |v_{mod}-v| \, dz$", fontsize=12)
     text(textpos..., "(a) Phillips unidirectional profile")
-    
+
     subplot(312)
     hist(nmadspd_comb, bins=transbins, color=col)
     xlim(transbins[1], transbins[end])
@@ -453,7 +453,7 @@ if transplotting
     text(textpos..., "(b) Phillips (wind sea) and monochromatic (swell) directional profile")
 
     subplot(313)
-    hist(nmadspd_comb_phil, bins=transbins, color=col) 
+    hist(nmadspd_comb_phil, bins=transbins, color=col)
     xlim(transbins[1], transbins[end])
     ylim(ylims...)
     text(0.3, textpos[2], "(c) Phillips wind sea and swell directional profile")
