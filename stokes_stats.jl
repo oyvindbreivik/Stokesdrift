@@ -20,11 +20,13 @@ using Printf
 pyplt = pyimport("matplotlib.pyplot")
 mplot3d = pyimport("mpl_toolkits.mplot3d")
 
-profileplotting = true
-statplotting = false
-transplotting = false
+profileplotting = false
+println("CCC test")
+statplotting = true
+transplotting = true
+transdiffplotting = true
 infiles = ["Stokesdrift/run_stokes_12h.asc", "../Pro/MyWave/Stokes_profile/output_stokes_profile_erai_natl_60N20W_2010.asc"]
-infiles = ["Stokesdrift/run_stokes_short.asc", "Stokesdrift/output_stokes_profile_erai_natl_60N20W_short.asc"]
+#infiles = ["Stokesdrift/run_stokes_short.asc", "Stokesdrift/output_stokes_profile_erai_natl_60N20W_short.asc"]
 NREC = 365
 NLEV = 300
 NPAR_COMB = 13
@@ -35,6 +37,7 @@ irec = 0
 irec0 = 189 # 2010-04-05 interesting, wide angle between swell and windsea
 irec0 = 189*2 # 2010-07-08 less deviation between swell and windsea
 irec0 = 199*2+1 # -07-18
+irec0 = 7
 
 # Combined profile v full profile
 # Velocity stats
@@ -86,6 +89,9 @@ stdspd_comb_phil = similar(meaneast_comb)
 nmadspd_comb = similar(meaneast_comb)
 nmadspd_phil = similar(meaneast_comb)
 nmadspd_comb_phil = similar(meaneast_comb)
+spd_comb_diff_transp = similar(meaneast_comb)
+spd_phil_diff_transp = similar(meaneast_comb)
+spd_comb_phil_diff_transp = similar(meaneast_comb)
 
 # Open files
 f_comb = open(infiles[1])
@@ -193,16 +199,31 @@ while !eof(f_comb) && !eof(f_full)
             push!(vspd_full_transp, transp)
 
             # Normalized transport speed stats
-            push!(nmadspd_comb, -integrate(zvec, abs.(vspd_comb - vspd_full))/transp)
-            push!(nmadspd_phil, -integrate(zvec, abs.(vspd_phil - vspd_full))/transp)
-            push!(nmadspd_comb_phil, -integrate(zvec, abs.(vspd_comb_phil - vspd_full))/transp)
+            #push!(nmadspd_comb, -integrate(zvec, abs.(vspd_comb - vspd_full))/transp)
+            #push!(nmadspd_phil, -integrate(zvec, abs.(vspd_phil - vspd_full))/transp)
+            #push!(nmadspd_comb_phil, -integrate(zvec, abs.(vspd_comb_phil - vspd_full))/transp)
+            push!(nmadspd_comb, -integrate(zvec, hypot.(veast_comb-veast_full, vnorth_comb-vnorth_full))/transp)
+            push!(nmadspd_phil, -integrate(zvec, hypot.(veast_phil-veast_full, vnorth_phil-vnorth_full))/transp)
+            push!(nmadspd_comb_phil, -integrate(zvec, hypot.(veast_comb_phil-veast_full, vnorth_comb_phil-vnorth_full))/transp)
+
+            # Transport stats, unnormalized
+            push!(spd_comb_diff_transp, -integrate(zvec, hypot.(veast_comb-veast_full, vnorth_comb-vnorth_full)))
+            push!(spd_phil_diff_transp, -integrate(zvec, hypot.(veast_phil-veast_full, vnorth_phil-vnorth_full)))
+            push!(spd_comb_phil_diff_transp, -integrate(zvec, hypot.(veast_comb_phil-veast_full, vnorth_comb_phil-vnorth_full)))
+
+            #push!(veast_comb_diff_transp, -integrate(zvec, abs.(veast_comb - veast_full)))
+            #push!(vnorth_comb_diff_transp, -integrate(zvec, abs.(vnorth_comb - veast_full)))
+            #push!(veast_phil_diff_transp, -integrate(zvec, abs.(veast_phil - veast_full)))
+            #push!(vnorth_phil_diff_transp, -integrate(zvec, abs.(vnorth_phil - veast_full)))
+            #push!(veast_comb_phil_diff_transp, -integrate(zvec, abs.(veast_comb_phil - veast_full)))
+            #push!(vnorth_comb_phil_diff_transp, -integrate(zvec, abs.(vnorth_comb_phil - veast_full)))
 
            ### Plot profiles for selected time
 
             if profileplotting && irec==irec0
                 # Swell and wind sea profiles
-                veast_comb = profile_comb[:,2]
-                vnorth_comb = profile_comb[:,3]
+                #veast_comb = profile_comb[:,2]
+                #vnorth_comb = profile_comb[:,3]
                 veastsw = profile_comb[:,4]
                 vnorthsw = profile_comb[:,5]
                 veastws = profile_comb[:,6]
@@ -433,6 +454,7 @@ if transplotting
     pth = "Fig/"
     xstrtransp = "Normalized transport"
     textpos = (0.05, 80.0)
+    textpos2 = (0.75, 45.0)
     col = "k"
     ylims = (0, 100)
     transbins = 0:0.1:1.6
@@ -442,8 +464,9 @@ if transplotting
     xlim(transbins[1], transbins[end])
     ylim(ylims...)
     println("NMAD transport, " * @sprintf("Phil: %7.5f ", mean(nmadspd_phil)) * @sprintf("Comb: %7.5f ", mean(nmadspd_comb)) * @sprintf("Comb Phil: %7.5f", mean(nmadspd_comb_phil)) )
-    title(L"Normalized difference from ERA-I profiles, $\delta v = V^{-1} \int_{-30 m}^0 \, |v_{mod}-v| \, dz$", fontsize=12)
+    title(L"Normalized difference from ERA-I profiles, $\delta V = V^{-1} \int_{-30 m}^0 \, |v_{mod}-v| \, dz$", fontsize=12)
     text(textpos..., "(a) Phillips unidirectional profile")
+    text(textpos2..., "Normalized mean error: " * @sprintf("%7.5f ", mean(nmadspd_phil)))
 
     subplot(312)
     hist(nmadspd_comb, bins=transbins, color=col)
@@ -451,12 +474,14 @@ if transplotting
     ylim(ylims...)
     ylabel("Number of occurrences")
     text(textpos..., "(b) Phillips (wind sea) and monochromatic (swell) directional profile")
+    text(textpos2..., "Normalized mean error: " * @sprintf("%7.5f ", mean(nmadspd_comb)))
 
     subplot(313)
     hist(nmadspd_comb_phil, bins=transbins, color=col)
     xlim(transbins[1], transbins[end])
     ylim(ylims...)
     text(0.3, textpos[2], "(c) Phillips wind sea and swell directional profile")
+    text(textpos2..., "Normalized mean error: " * @sprintf("%7.5f ", mean(nmadspd_comb_phil)))
     xlabel(xstrtransp)
     gcf()
     fname = pth*"nmadspd"
@@ -464,3 +489,44 @@ if transplotting
     savefig(fname*".pdf")
 
 end # if transplotting
+
+if transdiffplotting
+    pth = "Fig/"
+    xstrtransp = L"Transport [m$^2/$s]"
+    textpos = (0.00, 85.0)
+    col = "k"
+    ylims = (0, 100)
+    transbins = 0:0.03:0.8
+    figtransp = matplotlib.pyplot.figure()
+    subplot(311)
+    hist(spd_phil_diff_transp, bins=transbins, color=col)
+    xlim(transbins[1], transbins[end])
+    ylim(ylims...)
+    #println("Transport stats, " * @sprintf("Phil: %7.5f ", mean(spd_phil_diff_transp)) * @sprintf("Comb: %7.5f ", mean(spd_comb_diff_transp)) * @sprintf("Comb Phil: %7.5f", mean(spd_comb_phil_diff_transp)) )
+    statstxt="Transport stats:\n " * @sprintf("Phil: %7.5f ", mean(spd_phil_diff_transp)) * @sprintf("\n Comb: %7.5f ", mean(spd_comb_diff_transp)) * @sprintf("\n Comb Phil: %7.5f", mean(spd_comb_phil_diff_transp))
+    println(statstxt)
+    title(L"Difference from ERA-I profiles, $\Delta V = \int_{-30 m}^0 \, |v_{mod}-v| \, dz$", fontsize=12)
+    text(textpos..., "(a) Phillips unidirectional profile")
+    text(0.5, 30, "Mean error: " * @sprintf("%7.5f ", mean(spd_phil_diff_transp)))
+
+    subplot(312)
+    hist(spd_comb_diff_transp, bins=transbins, color=col)
+    xlim(transbins[1], transbins[end])
+    ylim(ylims...)
+    ylabel("Number of occurrences")
+    text(textpos..., "(b) Phillips (wind sea) and monochromatic (swell) directional profile")
+    text(0.5, 30, "Mean error: " * @sprintf("%7.5f ", mean(spd_comb_diff_transp)))
+
+    subplot(313)
+    hist(spd_comb_phil_diff_transp, bins=transbins, color=col)
+    xlim(transbins[1], transbins[end])
+    ylim(ylims...)
+    text(textpos..., "(c) Phillips wind sea and swell directional profile")
+    text(0.5, 30, "Mean error: " * @sprintf("%7.5f ", mean(spd_comb_phil_diff_transp)))
+    xlabel(xstrtransp)
+    gcf()
+    fname = pth*"transpdiff"
+    savefig(fname*".png")
+    savefig(fname*".pdf")
+
+end
