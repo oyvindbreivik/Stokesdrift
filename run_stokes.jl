@@ -5,6 +5,7 @@ using Dates
 using ArgParse
 using PyPlot
 using PyCall
+using Statistics
 
 basemap = pyimport("mpl_toolkits.basemap")
 pyplt = pyimport("matplotlib.pyplot")
@@ -15,7 +16,6 @@ function parse_commandline(args)
     Compute Stokes shear and inverse Stokes depth from NetCDF input. Dump ASCII profile to selected location
 
     Example:
-    time julia run_stokes.jl -i /home/oyvindb/Data/Mdata/Stokes_shear/tst.nc -o stokes_combined.asc --lon 340.0 --lat 60.0 --dep 30 --dz 0.1
     time julia run_stokes.jl -i ../../Stokesdrift/Stokes_shear_ei/stokes*2010*.nc -o run_stokes_12h.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
     time julia run_stokes.jl -i ../Data/stokes*2010*.nc -o run_stokes_short.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
 
@@ -89,7 +89,6 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
 
     b = 1.0
     plt = true
-    #zvec = 0.0:-0.1:-30.0
     BIG = 1000.0
     miss = 0
     TOL = 1.0/BIG
@@ -107,11 +106,9 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
 
     dummy = ncread(infiles[1], "mp1")
     nx, ny = size(dummy)
-    println("CCC len times times infiles ", length(times), " x ", length(infiles))
     nt = length(times)*length(infiles)
     Vratio = zeros(Float64, nx, ny, nt)
     equaldepth = zeros(Float64, nx, ny, nt)
-    println("CCC size Vratio = ", size(Vratio))
 
     dlon = Sphere.ang180(lons[2]-lons[1])
     dlat = lats[2]-lats[1]
@@ -218,10 +215,15 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         # Wind sea wave number
         kws = Stokes.phillips_wavenumber(v0spdws, Vspdws)
 
+        Vspd = hypot.(Veastws+Veastsw, Vnorthws+Vnorthsw)
+
         println("CCC ifile ", ifile)
-        println("CCC size Vspdws ", size(Vspdws))
         nt0 = length(times)
-        Vratio[:,:,ifile:ifile+nt0-1] = Vspdsw./(Vspdws.+TOL)
+        #Vratio[:,:,ifile:ifile+nt0-1] = Vspdsw./(Vspdws.+TOL)
+        k0 = (ifile-1)*nt0+1
+        k1 = k0+nt0-1
+        #Vratio[:,:,ifile:ifile+nt0-1] = Vspdsw./(Vspd.+TOL)
+        Vratio[:,:,k0:k1] = Vspdsw./(Vspd.+TOL)
 
      ### Alternatively, calculate swell and windsea Stokes surface drift speed given swell and windsea direction
 
@@ -235,10 +237,6 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         # Must choose one or the other, depending on the magnitude
         v0spdsw = (wsnorth.*ust-wseast.*vst)./(sweast.*wsnorth-swnorth.*wseast)
         v0spdws = (swnorth.*ust-sweast.*vst)./(wseast.*swnorth-wsnorth.*sweast)
-        #lneg = (v0spdsw .<= 0) .& (v0spdws .<= 0)
-        #if any(lneg)
-        #    println("Warning, both v0spdsw and v0spdws are negative in $(sum(lneg)) locations")
-        #end
         lbigswell = v0spdsw .> v0spdws
 
         # Swell and wind sea Stokes drift components
@@ -290,22 +288,21 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         if any(v0spdsw.<0.0) | any(v0spdws.<0.0)
             println("CCC negativity abounds")
         end
-        println("CCC size tmp ", size(tmp))
         tmp[.!dry] = log.(v0spdsw[.!dry]./v0spdws[.!dry])./(2(kws[.!dry].-ksw[.!dry]))
         lsmallws = tmp.>0.0
         # Swell greater than wind sea?
         tmp2[.!dry] = log.(v0spdws[.!dry]./v0spdsw[.!dry])./(2(ksw[.!dry].-kws[.!dry]))
         tmp[lsmallws] = tmp2[lsmallws]
         lundef = tmp.>0
-        println("CCC sum(dry), sum(lsmallws), sum(lundef), size(lundef) ", sum(dry), " ", sum(lsmallws), " ", sum(lundef), " ", prod(size(lundef)))
+        #println("CCC sum(dry), sum(lsmallws), sum(lundef), size(lundef) ", sum(dry), " ", sum(lsmallws), " ", sum(lundef), " ", prod(size(lundef)))
         tmp[lundef] .= 0.0
-        equaldepth[:,:,ifile:ifile+nt0-1] = tmp
-        #equaldepth[:,:,ifile:ifile+nt0-1] = log.(v0spdsw./v0spdws)./(2(kws.-ksw))
+        equaldepth[:,:,k0:k1] = tmp
 
     ### Dump profile at selected locations, use stride (defaults to 1)
 
         for (k,t) in enumerate(times[1:strd:end])
-            println("CCC equaldepth[i0,j0,k] ", equaldepth[i0,j0,k])
+            #println("CCC equaldepth[i0,j0,k] ", equaldepth[i0,j0,k])
+            println("CCC equaldepth[i0,j0,(ifile-1)*nt0+k] ", equaldepth[i0,j0,(ifile-1)*nt0+k])
             # Lat, lon, date
             # Convert to real date and time by adding time units offset to number of hours from start
             t1 = t0+Dates.Hour(t)
@@ -382,7 +379,7 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         yy = reshape(y, size(Lats))
         mp.pcolor(xx, yy, Vratiomean[:,:,1])
         mp.colorbar()
-        title("Ratio of swell to wind sea Stokes transport")
+        title("Ratio of swell to total Stokes transport")
         savefig("Fig/transpratio.png")
         savefig("Fig/transpratio.pdf")
 
