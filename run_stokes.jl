@@ -288,6 +288,7 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
     ### Compute the normalized cross product of surface swell and wind sea Stokes drift
         tmp = v0spdws.*v0spdsw.*sind.(sdirws-sdirsw)./(v0spd.+TOL2).^2
         #tmp[dry] .= 0.0
+        tmp[abs.(tmp).>5.0] .= 0.0
         vcross[:,:,k0:k1] = tmp
 
     ### Compute the balancing depth where swell Stokes drift equals the wind sea Stokes drift

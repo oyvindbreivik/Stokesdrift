@@ -97,6 +97,7 @@ to infinite depth. All wave energy assumed to propagate in the same direction.
 # Returns:
  * `V`: Stokes transport speed [``m^2/s``]
 
+
 2016-04-25
 Oyvind.Breivik@met.no
 """
