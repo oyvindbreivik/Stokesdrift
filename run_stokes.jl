@@ -28,7 +28,6 @@ function parse_commandline(args)
 
     """)
 
-
     @add_arg_table s begin
         "--infiles", "-i"
             nargs = '+'
@@ -92,6 +91,7 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
     BIG = 1000.0
     miss = 0
     TOL = 1.0/BIG
+    TOL2 = 0.01
     varnames = ["mp1", "ust", "vst", "swh", "mwd", "shww", "mdww", "p1ww", "p1ps", "shts", "mdts", "wind"]
 
     # Read lons and lats from first file
@@ -108,7 +108,9 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
     nx, ny = size(dummy)
     nt = length(times)*length(infiles)
     Vratio = zeros(Float64, nx, ny, nt)
-    equaldepth = zeros(Float64, nx, ny, nt)
+    vcross = similar(Vratio)
+    #equaldepth = zeros(Float64, nx, ny, nt)
+    equaldepth = similar(Vratio)
 
     dlon = Sphere.ang180(lons[2]-lons[1])
     dlat = lats[2]-lats[1]
@@ -282,6 +284,12 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         wspd = vars["wind"]
         wspd[wspd.==miss] .= 0.0
 
+    #CCC here
+    ### Compute the normalized cross product of surface swell and wind sea Stokes drift
+        tmp = v0spdws.*v0spdsw.*sind.(sdirws-sdirsw)./(v0spd.+TOL2).^2
+        #tmp[dry] .= 0.0
+        vcross[:,:,k0:k1] = tmp
+
     ### Compute the balancing depth where swell Stokes drift equals the wind sea Stokes drift
         tmp = zeros(Float64, size(dry))
         tmp2 = zeros(Float64, size(dry))
@@ -356,6 +364,7 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
     if plt
         Vratiomean = mean(Vratio, dims=3)
         equaldepthmean = mean(equaldepth, dims=3)
+        vcrossmean = mean(vcross, dims=3)
         #equaldepthmean[dry,1] .= 0.0
         # Compute native map projection coordinates of lat/lon grid.
         # First meshgrid the Julian way
@@ -368,7 +377,7 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         #mp = basemap.Basemap(projection="ortho", lat_0=30, lon_0=-30, resolution="l")
         mp.drawcoastlines(linewidth=0.5)
         mp.drawcountries(linewidth=0.25)
-        mp.fillcontinents(color="coral", lake_color="aqua")
+        #mp.fillcontinents(color="coral", lake_color="aqua")
         # Draw the edge of the map projection region (the projection limb)
         mp.drawmapboundary(fill_color="aqua")
         # Draw lat/lon grid lines every 10 degrees.
@@ -388,7 +397,7 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         mp2.pcolor(xx, yy, equaldepthmean[:,:,1])
         mp2.drawcoastlines(linewidth=0.5)
         mp2.drawcountries(linewidth=0.25)
-        mp2.fillcontinents(color="coral", lake_color="aqua")
+        #mp2.fillcontinents(color="coral", lake_color="aqua")
         # Draw lat/lon grid lines every 10 degrees.
         mp2.drawmeridians(collect(0:45:360), labels=[true,false,false,true])
         mp2.drawparallels(collect(-90:30:90), labels=[true,false,false,false])
@@ -399,6 +408,23 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         title("Balancing depth of swell and wind sea Stokes drift")
         savefig("Fig/eqdepth.png")
         savefig("Fig/eqdepth.pdf")
+
+        figure()
+        mp3 = basemap.Basemap(projection="mill",llcrnrlon=0.0,llcrnrlat=-80.0,urcrnrlon=360.0,urcrnrlat=80.0,lon_0=180.0,resolution="c")
+        mp3.pcolor(xx, yy, vcrossmean[:,:,1])
+        mp3.drawcoastlines(linewidth=0.5)
+        mp3.drawcountries(linewidth=0.25)
+        #mp2.fillcontinents(color="coral", lake_color="aqua")
+        # Draw lat/lon grid lines every 10 degrees.
+        mp3.drawmeridians(collect(0:45:360), labels=[true,false,false,true])
+        mp3.drawparallels(collect(-90:30:90), labels=[true,false,false,false])
+        # Draw the edge of the map projection region (the projection limb)
+        mp3.drawmapboundary(fill_color="aqua")
+        clim(-0.5,0.5)
+        mp3.colorbar()
+        title("Normalized cross product of swell and wind sea Stokes drift")
+        savefig("Fig/vcrossmean.png")
+        savefig("Fig/vcrossmean.pdf")
 
         gcf()
     end # if plt
