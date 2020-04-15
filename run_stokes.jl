@@ -111,7 +111,6 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
     depthratio = similar(Vratio)
     equaldepth = similar(Vratio)
     vcross = similar(Vratio)
-    #equaldepth = zeros(Float64, nx, ny, nt)
 
     dlon = Sphere.ang180(lons[2]-lons[1])
     dlat = lats[2]-lats[1]
@@ -309,12 +308,11 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         lundef = tmp.>0
         #println("CCC sum(dry), sum(lsmallws), sum(lundef), size(lundef) ", sum(dry), " ", sum(lsmallws), " ", sum(lundef), " ", prod(size(lundef)))
         tmp[lundef] .= 0.0
-        equaldepth[:,:,k0:k1] = tmp
+        equaldepth[:,:,k0:k1] = abs.(tmp)
 
     ### Dump profile at selected locations, use stride (defaults to 1)
 
         for (k,t) in enumerate(times[1:strd:end])
-            #println("CCC equaldepth[i0,j0,k] ", equaldepth[i0,j0,k])
             println("CCC equaldepth[i0,j0,(ifile-1)*nt0+k] ", equaldepth[i0,j0,(ifile-1)*nt0+k])
             # Lat, lon, date
             # Convert to real date and time by adding time units offset to number of hours from start
@@ -371,7 +369,6 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         equaldepthmean = mean(equaldepth, dims=3)
         depthratiomean = mean(depthratio, dims=3)
         vcrossmean = mean(vcross, dims=3)
-        #equaldepthmean[dry,1] .= 0.0
         # Compute native map projection coordinates of lat/lon grid.
         # First meshgrid the Julian way
         Lons = [lo for lo in lons, la in lats]
@@ -409,11 +406,11 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         mp2.drawparallels(collect(-90:30:90), labels=[true,false,false,false])
         # Draw the edge of the map projection region (the projection limb)
         mp2.drawmapboundary(fill_color="aqua")
-        clim(-10,0)
+        clim(0,20)
         mp2.colorbar()
         title("Balancing depth of swell and wind sea Stokes drift")
-        savefig("Fig/eqdepth.png")
-        savefig("Fig/eqdepth.pdf")
+        savefig("Fig/baldepth.png")
+        savefig("Fig/baldepth.pdf")
 
         fig=figure()
         #mp = basemap.Basemap(projection="mill", lon_0=0)
