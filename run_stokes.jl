@@ -108,9 +108,10 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
     nx, ny = size(dummy)
     nt = length(times)*length(infiles)
     Vratio = zeros(Float64, nx, ny, nt)
+    depthratio = similar(Vratio)
+    equaldepth = similar(Vratio)
     vcross = similar(Vratio)
     #equaldepth = zeros(Float64, nx, ny, nt)
-    equaldepth = similar(Vratio)
 
     dlon = Sphere.ang180(lons[2]-lons[1])
     dlat = lats[2]-lats[1]
@@ -221,10 +222,8 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
 
         println("CCC ifile ", ifile)
         nt0 = length(times)
-        #Vratio[:,:,ifile:ifile+nt0-1] = Vspdsw./(Vspdws.+TOL)
         k0 = (ifile-1)*nt0+1
         k1 = k0+nt0-1
-        #Vratio[:,:,ifile:ifile+nt0-1] = Vspdsw./(Vspd.+TOL)
         Vratio[:,:,k0:k1] = Vspdsw./(Vspd.+TOL)
 
      ### Alternatively, calculate swell and windsea Stokes surface drift speed given swell and windsea direction
@@ -284,10 +283,15 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         wspd = vars["wind"]
         wspd[wspd.==miss] .= 0.0
 
-    #CCC here
+    ### Compute the ratio of the swell Stokes e-folding depth to the total Stokes e-folding depth
+        #tmp = Vspdsw.*v0spd./(Vspd.*v0spdsw.+TOL)
+        tmp = Vspdsw.*v0spdws./(Vspdws.*v0spdsw.+TOL)
+        tmp[dry] .= 0.0
+        tmp[abs.(tmp).>25.0] .= 0.0
+        depthratio[:,:,k0:k1] = tmp
+
     ### Compute the normalized cross product of surface swell and wind sea Stokes drift
         tmp = v0spdws.*v0spdsw.*sind.(sdirws-sdirsw)./(v0spd.+TOL2).^2
-        #tmp[dry] .= 0.0
         tmp[abs.(tmp).>5.0] .= 0.0
         vcross[:,:,k0:k1] = tmp
 
@@ -365,6 +369,7 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
     if plt
         Vratiomean = mean(Vratio, dims=3)
         equaldepthmean = mean(equaldepth, dims=3)
+        depthratiomean = mean(depthratio, dims=3)
         vcrossmean = mean(vcross, dims=3)
         #equaldepthmean[dry,1] .= 0.0
         # Compute native map projection coordinates of lat/lon grid.
@@ -409,6 +414,27 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         title("Balancing depth of swell and wind sea Stokes drift")
         savefig("Fig/eqdepth.png")
         savefig("Fig/eqdepth.pdf")
+
+        fig=figure()
+        #mp = basemap.Basemap(projection="mill", lon_0=0)
+        mp = basemap.Basemap(projection="mill",llcrnrlon=0.0,llcrnrlat=-80.0,urcrnrlon=360.0,urcrnrlat=80.0,lon_0=180.0,resolution="c")
+        #mp = basemap.Basemap(projection="ortho", lat_0=30, lon_0=-30, resolution="l")
+        mp.drawcoastlines(linewidth=0.5)
+        mp.drawcountries(linewidth=0.25)
+        #mp.fillcontinents(color="coral", lake_color="aqua")
+        # Draw the edge of the map projection region (the projection limb)
+        mp.drawmapboundary(fill_color="aqua")
+        # Draw lat/lon grid lines every 10 degrees.
+        mp.drawmeridians(collect(0:45:360), labels=[true,false,false,true])
+        mp.drawparallels(collect(-90:30:90), labels=[true,false,false,false])
+        x, y = mp(Lons, Lats)
+        xx = reshape(x, size(Lons))
+        yy = reshape(y, size(Lats))
+        mp.pcolor(xx, yy, depthratiomean[:,:,1])
+        mp.colorbar()
+        title("Ratio of swell to wind sea Stokes e-folding depth")
+        savefig("Fig/depthratio.png")
+        savefig("Fig/depthratio.pdf")
 
         figure()
         mp3 = basemap.Basemap(projection="mill",llcrnrlon=0.0,llcrnrlat=-80.0,urcrnrlon=360.0,urcrnrlat=80.0,lon_0=180.0,resolution="c")
