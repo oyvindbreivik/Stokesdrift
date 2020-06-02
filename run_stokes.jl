@@ -16,6 +16,8 @@ function parse_commandline(args)
     Compute Stokes shear and inverse Stokes depth from NetCDF input. Dump ASCII profile to selected location
 
     Example:
+    time julia run_stokes.jl -i ../../Stokesdrift/Stokes_shear_ei/stokes*20100[1-3]*.nc -o run_stokes_12h_JFM.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
+    time julia run_stokes.jl -i ../../Stokesdrift/Stokes_shear_ei/stokes*20100[7-9]*.nc -o run_stokes_12h_JAS.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
     time julia run_stokes.jl -i ../../Stokesdrift/Stokes_shear_ei/stokes*2010*.nc -o run_stokes_12h.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
     time julia run_stokes.jl -i ../Data/stokes*2010*.nc -o run_stokes_short.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
 
@@ -189,6 +191,7 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         Vnorthsw = Vspdsw.*cosd.(mdts)
 
         ### Wind sea
+
         # Significant height of wind waves
         shww = vars["shww"]
         shww[shww.==miss] .= 0.0
@@ -202,7 +205,7 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         mdww = Sphere.ang360(vars["mdww"].+180.0)
         mdww[mdww.==miss] .= 361.0
 
-     ### Wind sea Stokes parameters
+        ### Wind sea Stokes parameters
 
         # Wind sea surface Stokes drift
         v0eastws = ust-v0eastsw
@@ -214,9 +217,11 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         Vspdws = Stokes.transport(shww, fm01ws)
         Veastws = Vspdws.*sind.(sdirws)
         Vnorthws = Vspdws.*cosd.(sdirws)
+
         # Wind sea wave number
         kws = Stokes.phillips_wavenumber(v0spdws, Vspdws)
 
+        # Total Stokes transport magnitude
         Vspd = hypot.(Veastws+Veastsw, Vnorthws+Vnorthsw)
 
         println("CCC ifile ", ifile)
@@ -258,7 +263,7 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         v0eastws[dry] .= 0.0
         v0northws[dry] .= 0.0
 
-      ### Recompute surface Stokes drift speed
+        ### Recompute surface Stokes drift speed
 
         # Swell Stokes drift
         sdirsw = atand.(v0eastsw, v0northsw)
@@ -282,33 +287,37 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         wspd = vars["wind"]
         wspd[wspd.==miss] .= 0.0
 
-    ### Compute the ratio of the swell Stokes e-folding depth to the total Stokes e-folding depth
+        ### Compute the ratio of the swell Stokes e-folding depth to the total Stokes e-folding depth
+
         #tmp = Vspdsw.*v0spd./(Vspd.*v0spdsw.+TOL)
         tmp = Vspdsw.*v0spdws./(Vspdws.*v0spdsw.+TOL)
         tmp[dry] .= 0.0
         tmp[abs.(tmp).>25.0] .= 0.0
         depthratio[:,:,k0:k1] = tmp
 
-    ### Compute the normalized cross product of surface swell and wind sea Stokes drift
+        ### Compute the normalized cross product of surface swell and wind sea Stokes drift
         tmp = v0spdws.*v0spdsw.*sind.(sdirws-sdirsw)./(v0spd.+TOL2).^2
         tmp[abs.(tmp).>5.0] .= 0.0
         vcross[:,:,k0:k1] = tmp
 
     ### Compute the balancing depth where swell Stokes drift equals the wind sea Stokes drift
         tmp = zeros(Float64, size(dry))
-        tmp2 = zeros(Float64, size(dry))
+        #tmp2 = zeros(Float64, size(dry))
         if any(v0spdsw.<0.0) | any(v0spdws.<0.0)
             println("CCC negativity abounds")
         end
-        tmp[.!dry] = log.(v0spdsw[.!dry]./v0spdws[.!dry])./(2(kws[.!dry].-ksw[.!dry]))
-        lsmallws = tmp.>0.0
+        #tmp[.!dry] = log.(v0spdsw[.!dry]./v0spdws[.!dry])./(2(kws[.!dry].-ksw[.!dry]))
+        #lsmallws = tmp.>0.0
         # Swell greater than wind sea?
-        tmp2[.!dry] = log.(v0spdws[.!dry]./v0spdsw[.!dry])./(2(ksw[.!dry].-kws[.!dry]))
-        tmp[lsmallws] = tmp2[lsmallws]
-        lundef = tmp.>0
+        #tmp2[.!dry] = log.(v0spdws[.!dry]./v0spdsw[.!dry])./(2(ksw[.!dry].-kws[.!dry]))
+        #tmp[lsmallws] = tmp2[lsmallws]
+        #lundef = tmp.>0
         #println("CCC sum(dry), sum(lsmallws), sum(lundef), size(lundef) ", sum(dry), " ", sum(lsmallws), " ", sum(lundef), " ", prod(size(lundef)))
-        tmp[lundef] .= 0.0
-        equaldepth[:,:,k0:k1] = abs.(tmp)
+        #tmp[lundef] .= 0.0
+        #equaldepth[:,:,k0:k1] = abs.(tmp)
+        tmp[.!dry] = log.(v0spdws[.!dry]./v0spdsw[.!dry])./(2(kws[.!dry].-ksw[.!dry]))
+        equaldepth[:,:,k0:k1] = tmp
+
 
     ### Dump profile at selected locations, use stride (defaults to 1)
 
@@ -367,6 +376,7 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
     if plt
         Vratiomean = mean(Vratio, dims=3)
         equaldepthmean = mean(equaldepth, dims=3)
+        #equaldepthmean = mean(equaldepth[equaldepth.>0.0], dims=3)
         depthratiomean = mean(depthratio, dims=3)
         vcrossmean = mean(vcross, dims=3)
         # Compute native map projection coordinates of lat/lon grid.
@@ -387,12 +397,14 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         mp.drawmeridians(collect(0:45:360), labels=[true,false,false,true])
         mp.drawparallels(collect(-90:30:90), labels=[true,false,false,false])
         x, y = mp(Lons, Lats)
-        x0, y0 = mp(340, 60)
-        println("CCC x0 y0", x0, y0)
+        #x0, y0 = mp(340.0, 60.0)
+        # Something funny going on with the lons and lats - off by one?
+        x0, y0 = mp([340.0, 340.0], [60.0, 59.0])
+        println("CCC x0 y0", x0[2], y0[2])
         xx = reshape(x, size(Lons))
         yy = reshape(y, size(Lats))
         mp.pcolor(xx, yy, Vratiomean[:,:,1])
-        text(x0,y0,"x")
+        text(x0[2],y0[2],"x")
         cb = mp.colorbar()
         cb.set_label(L"$V_\mathrm{sw}/V_\mathrm{S}$ [~]")
         title("Ratio of swell to total Stokes transport")
@@ -411,7 +423,8 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         mp2.drawparallels(collect(-90:30:90), labels=[true,false,false,false])
         # Draw the edge of the map projection region (the projection limb)
         mp2.drawmapboundary(fill_color="aqua")
-        clim(0,30)
+        #clim(0,30)
+        clim(-30,30)
         cb = mp2.colorbar()
         cb.set_label("Balancing depth [m]")
         title("Balancing depth of swell and wind sea Stokes drift")

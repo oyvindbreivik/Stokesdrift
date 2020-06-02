@@ -21,8 +21,7 @@ pyplt = pyimport("matplotlib.pyplot")
 mplot3d = pyimport("mpl_toolkits.mplot3d")
 
 profileplotting = false
-println("CCC test")
-statplotting = true
+statplotting = false
 transplotting = true
 transdiffplotting = true
 infiles = ["Stokesdrift/run_stokes_12h.asc", "../Pro/MyWave/Stokes_profile/output_stokes_profile_erai_natl_60N20W_2010.asc"]
@@ -36,8 +35,8 @@ NPOS = 4
 irec = 0
 irec0 = 189 # 2010-04-05 interesting, wide angle between swell and windsea
 irec0 = 189*2 # 2010-07-08 less deviation between swell and windsea
+irec0 = 7 # -01-04 Interesting curve, well represented by the combined profile
 irec0 = 199*2+1 # -07-18
-irec0 = 7
 
 # Combined profile v full profile
 # Velocity stats
@@ -92,6 +91,12 @@ nmadspd_comb_phil = similar(meaneast_comb)
 spd_comb_diff_transp = similar(meaneast_comb)
 spd_phil_diff_transp = similar(meaneast_comb)
 spd_comb_phil_diff_transp = similar(meaneast_comb)
+east_comb_diff_transp = similar(meaneast_comb)
+east_phil_diff_transp = similar(meaneast_comb)
+east_comb_phil_diff_transp = similar(meaneast_comb)
+north_comb_diff_transp = similar(meaneast_comb)
+north_phil_diff_transp = similar(meaneast_comb)
+north_comb_phil_diff_transp = similar(meaneast_comb)
 
 # Open files
 f_comb = open(infiles[1])
@@ -210,6 +215,12 @@ while !eof(f_comb) && !eof(f_full)
             push!(spd_comb_diff_transp, -integrate(zvec, hypot.(veast_comb-veast_full, vnorth_comb-vnorth_full)))
             push!(spd_phil_diff_transp, -integrate(zvec, hypot.(veast_phil-veast_full, vnorth_phil-vnorth_full)))
             push!(spd_comb_phil_diff_transp, -integrate(zvec, hypot.(veast_comb_phil-veast_full, vnorth_comb_phil-vnorth_full)))
+            push!(east_comb_diff_transp, -integrate(zvec, veast_comb-veast_full))
+            push!(east_phil_diff_transp, -integrate(zvec, veast_phil-veast_full))
+            push!(east_comb_phil_diff_transp, -integrate(zvec, veast_comb_phil-veast_full))
+            push!(north_comb_diff_transp, -integrate(zvec, vnorth_comb-vnorth_full))
+            push!(north_phil_diff_transp, -integrate(zvec, vnorth_phil-vnorth_full))
+            push!(north_comb_phil_diff_transp, -integrate(zvec, vnorth_comb_phil-vnorth_full))
 
             #push!(veast_comb_diff_transp, -integrate(zvec, abs.(veast_comb - veast_full)))
             #push!(vnorth_comb_diff_transp, -integrate(zvec, abs.(vnorth_comb - veast_full)))
@@ -222,8 +233,6 @@ while !eof(f_comb) && !eof(f_full)
 
             if profileplotting && irec==irec0
                 # Swell and wind sea profiles
-                #veast_comb = profile_comb[:,2]
-                #vnorth_comb = profile_comb[:,3]
                 veastsw = profile_comb[:,4]
                 vnorthsw = profile_comb[:,5]
                 veastws = profile_comb[:,6]
@@ -237,9 +246,7 @@ while !eof(f_comb) && !eof(f_full)
                 #
                 # 3D view
                 fig=matplotlib.pyplot.figure()
-                legendtexts = ("Phillips (wind sea)", "Combined", "Monochromatic (swell)", "Full 2D", "Phillips (total sea)", "Phillips (swell)")
-                #legendtexts = ("Phillips (wind sea)", "Combined", "Monochromatic (swell)", "Full 2D", "Phillips (total sea)", "Phillips (swell)")
-
+                legendtexts = ("Phillips wind sea", "Combined", "Monochromatic swell", "Full 2D", "Phillips unidir total sea")
                 titletext = "Date: $date_comb " * @sprintf("lat: %7.2f, lon: %7.2f", lat_comb, lon_comb)
                 ax = fig.gca(projection="3d")
                 plot(veastws, vnorthws, zvec)
@@ -250,8 +257,8 @@ while !eof(f_comb) && !eof(f_full)
                 #plot(veastsw_phil2, vnorthsw_phil2, zvec)
                 title(titletext)
                 legend(legendtexts,loc="center left")
-                xlabel(L"$u_{east}$ [m/s]")
-                ylabel(L"$u_{north}$ [m/s]")
+                xlabel(L"East velocity, $v_\mathrm{E}$ [m/s]")
+                ylabel(L"North velocity, $v_\mathrm{N}$ [m/s]")
                 zlabel(L"$z$ [m]")
                 profile3dfig = "stokes_combined3d"
                 savefig("Fig/$profile3dfig.pdf")
@@ -259,56 +266,60 @@ while !eof(f_comb) && !eof(f_full)
                 gcf()
 
                 # 2D bird's eye
-                fig2 = matplotlib.pyplot.figure()
-                plot(veastws, vnorthws)
-                plot(veast_comb, vnorth_comb)
-                plot(veastsw, vnorthsw)
-                plot(veast_full, vnorth_full)
-                plot(veast_phil, vnorth_phil)
-                axis("image")
-                #pyplt.axes().set_aspect("equal", "datalim")
-                title(titletext)
-                legend(legendtexts,loc="upper left")
-                xlabel(L"$u_{east}$ [m/s]")
-                ylabel(L"$u_{north}$ [m/s]")
-                grid(fig2)
-                profile2dfig = "stokes_combined2d"
-                savefig("Fig/$profile2dfig.pdf")
-                savefig("Fig/$profile2dfig.png")
-                gcf()
+                #fig2 = matplotlib.pyplot.figure()
+                #plot(veastws, vnorthws)
+                #plot(veast_comb, vnorth_comb)
+                #plot(veastsw, vnorthsw)
+                #plot(veast_full, vnorth_full)
+                #plot(veast_phil, vnorth_phil)
+                #axis("image")
+                ##pyplt.axes().set_aspect("equal", "datalim")
+                #title(titletext)
+                #legend(legendtexts,loc="upper left")
+                #xlabel(L"$u_{east}$ [m/s]")
+                #ylabel(L"$u_{north}$ [m/s]")
+                #grid(fig2)
+                #profile2dfig = "stokes_combined2d"
+                #savefig("Fig/$profile2dfig.pdf")
+                #savefig("Fig/$profile2dfig.png")
+                #gcf()
 
                 # Speed profile
-                fig3 = matplotlib.pyplot.figure()
-                plot(hypot.(veastws, vnorthws), zvec)
-                plot(hypot.(veast_comb, vnorth_comb), zvec)
-                plot(hypot.(veastsw, vnorthsw), zvec)
-                plot(hypot.(veast_full, vnorth_full), zvec)
-                plot(hypot.(veast_phil, vnorth_phil), zvec)
-                title(titletext)
-                legend(legendtexts,loc="lower right")
-                xlabel(L"Speed, $||\mathbf{u}||$ [m/s]")
-                ylabel(L"$z$ [m]")
-                grid(fig3)
-                profilefig = "stokes_combined_speed_profile"
-                savefig("Fig/$profilefig.pdf")
-                savefig("Fig/$profilefig.png")
-                gcf()
+                #fig3 = matplotlib.pyplot.figure()
+                #plot(hypot.(veastws, vnorthws), zvec)
+                #plot(hypot.(veast_comb, vnorth_comb), zvec)
+                #plot(hypot.(veastsw, vnorthsw), zvec)
+                #plot(hypot.(veast_full, vnorth_full), zvec)
+                #plot(hypot.(veast_phil, vnorth_phil), zvec)
+                #title(titletext)
+                #legend(legendtexts,loc="lower right")
+                #xlabel(L"Speed, $||\mathbf{u}||$ [m/s]")
+                #ylabel(L"$z$ [m]")
+                #grid(fig3)
+                #profilefig = "stokes_combined_speed_profile"
+                #savefig("Fig/$profilefig.pdf")
+                #savefig("Fig/$profilefig.png")
+                #gcf()
 
                 ### Phil2 figs below
 
                 # 2D bird's eye phil2 (two Phillips profiles)
                 fig4 = matplotlib.pyplot.figure()
-                legendtexts = ("Phillips (wind sea)", "Combined", "Phillips (swell)", "Full 2D", "Phillips (total sea)", "Phillips (swell)")
-                plot(veastws_phil2, vnorthws_phil2)
-                plot(veastsw_phil2+veastws_phil2, vnorthsw_phil2+vnorthws_phil2)
-                plot(veastsw_phil2, vnorthsw_phil2)
-                plot(veast_full, vnorth_full)
-                plot(veast_phil, vnorth_phil)
+                legendtexts = ("Phillips wind sea", "Combined", "Swell", "Full 2D", "Phillips unidir total sea")
+                #legendtexts = ("Phillips (wind sea)", "Combined", "Combined Phillips", "Monochromatic (swell)", "Phillips (swell)", "Full 2D", "Phillips (total sea)")
+                plot(veastws_phil2, vnorthws_phil2, color="tab:blue")
+                plot(veastsw+veastws, vnorthsw+vnorthws, linestyle="-", color="tab:orange")
+                plot(veastsw, vnorthsw, linestyle="-", color="tab:green")
+                plot(veast_full, vnorth_full, color="tab:red")
+                plot(veast_phil, vnorth_phil, color="tab:purple")
+                plot(veastsw_phil2+veastws_phil2, vnorthsw_phil2+vnorthws_phil2, linestyle="-.", color="tab:orange")
+                plot(veastsw_phil2, vnorthsw_phil2, linestyle="-.", color="tab:green")
+                plot(veastws, vnorthws, linestyle="-.", color="tab:blue")
                 axis("image")
                 title(titletext)
                 legend(legendtexts, loc="upper left")
-                xlabel(L"$u_{east}$ [m/s]")
-                ylabel(L"$u_{north}$ [m/s]")
+                xlabel(L"East velocity, $v_\mathrm{E}$ [m/s]")
+                ylabel(L"North velocity, $v_\mathrm{N}$ [m/s]")
                 grid(fig4)
                 profile2dphil2fig = "stokes_combined2d_phil2"
                 savefig("Fig/$profile2dphil2fig.pdf")
@@ -317,17 +328,60 @@ while !eof(f_comb) && !eof(f_full)
 
                 # Speed profile
                 fig5 = matplotlib.pyplot.figure()
-                plot(hypot.(veastws_phil2, vnorthws_phil2), zvec)
-                plot(hypot.(veastsw_phil2+veastws_phil2, vnorthsw_phil2+vnorthws_phil2), zvec)
-                plot(hypot.(veastsw_phil2, vnorthsw_phil2), zvec)
-                plot(hypot.(veast_full, vnorth_full), zvec)
-                plot(hypot.(veast_phil, vnorth_phil), zvec)
+                plot(hypot.(veastws_phil2, vnorthws_phil2), zvec, color="tab:blue")
+                plot(hypot.(veastsw+veastws, vnorthsw+vnorthws), zvec, linestyle="-", color="tab:orange")
+                plot(hypot.(veastsw, vnorthsw), zvec, linestyle="-", color="tab:green")
+                plot(hypot.(veast_full, vnorth_full), zvec, color="tab:red")
+                plot(hypot.(veast_phil, vnorth_phil), zvec, color="tab:purple")
+                plot(hypot.(veastsw_phil2+veastws_phil2, vnorthsw_phil2+vnorthws_phil2), zvec, linestyle="-.", color="tab:orange")
+                plot(hypot.(veastsw_phil2, vnorthsw_phil2), zvec, linestyle="-.", color="tab:green")
+                plot(hypot.(veastws, vnorthws), zvec, linestyle="-.", color="tab:blue")
                 title(titletext)
                 legend(legendtexts,loc="lower right")
                 xlabel(L"Speed, $||\mathbf{u}||$ [m/s]")
                 ylabel(L"$z$ [m]")
                 grid(fig5)
                 profilephil2fig = "stokes_combined_speed_profile_phil2"
+                savefig("Fig/$profilephil2fig.pdf")
+                savefig("Fig/$profilephil2fig.png")
+                gcf()
+
+                # East profile
+                fig6 = matplotlib.pyplot.figure()
+                plot(veastws_phil2, zvec, color="tab:blue")
+                plot(veastsw+veastws, zvec, linestyle="-", color="tab:orange")
+                plot(veastsw, zvec, linestyle="-", color="tab:green")
+                plot(veast_full, zvec, color="tab:red")
+                plot(veast_phil, zvec, color="tab:purple")
+                plot(veastsw_phil2+veastws_phil2, zvec, linestyle="-.", color="tab:orange")
+                plot(veastsw_phil2, zvec, linestyle="-.", color="tab:green")
+                plot(veastws, zvec, linestyle="-.", color="tab:blue")
+                title(titletext)
+                legend(legendtexts,loc="lower left")
+                xlabel(L"East velocity, $v_\mathrm{E}$ [m/s]")
+                ylabel(L"$z$ [m]")
+                grid(fig6)
+                profilephil2fig = "stokes_combined_east_profile_phil2"
+                savefig("Fig/$profilephil2fig.pdf")
+                savefig("Fig/$profilephil2fig.png")
+                gcf()
+
+                # North profile
+                fig7 = matplotlib.pyplot.figure()
+                plot(vnorthws_phil2, zvec, color="tab:blue")
+                plot(vnorthsw+vnorthws, zvec, linestyle="-", color="tab:orange")
+                plot(vnorthsw, zvec, linestyle="-", color="tab:green")
+                plot(vnorth_full, zvec, color="tab:red")
+                plot(vnorth_phil, zvec, color="tab:purple")
+                plot(vnorthsw_phil2+vnorthws_phil2, zvec, linestyle="-.", color="tab:orange")
+                plot(vnorthsw_phil2, zvec, linestyle="-.", color="tab:green")
+                plot(vnorthws, zvec, linestyle="-.", color="tab:blue")
+                title(titletext)
+                legend(legendtexts,loc="lower left")
+                xlabel(L"North velocity, $v_\mathrm{N}$ [m/s]")
+                ylabel(L"$z$ [m]")
+                grid(fig7)
+                profilephil2fig = "stokes_combined_north_profile_phil2"
                 savefig("Fig/$profilephil2fig.pdf")
                 savefig("Fig/$profilephil2fig.png")
                 gcf()
@@ -492,8 +546,9 @@ end # if transplotting
 
 if transdiffplotting
     pth = "Fig/"
-    xstrtransp = L"Transport [m$^2/$s]"
     textpos = (0.00, 85.0)
+    textpos3 = (0.12, 85.0)
+    xstrtransp = L"Transport [m$^2/$s]"
     col = "k"
     ylims = (0, 100)
     transbins = 0:0.03:0.8
@@ -521,11 +576,79 @@ if transdiffplotting
     hist(spd_comb_phil_diff_transp, bins=transbins, color=col)
     xlim(transbins[1], transbins[end])
     ylim(ylims...)
-    text(textpos..., "(c) Phillips wind sea and swell directional profile")
+    text(textpos3..., "(c) Phillips wind sea and swell directional profile")
     text(0.5, 30, "Mean error: " * @sprintf("%7.5f ", mean(spd_comb_phil_diff_transp)))
     xlabel(xstrtransp)
     gcf()
     fname = pth*"transpdiff"
+    savefig(fname*".png")
+    savefig(fname*".pdf")
+
+    ### East transport
+    xstrtransp = L"East transport [m$^2/$s]"
+    col = "k"
+    ylims = (0, 100)
+    transbins = 0:0.03:0.8
+    figtransp = matplotlib.pyplot.figure()
+    subplot(311)
+    hist(east_phil_diff_transp, bins=transbins, color=col)
+    xlim(transbins[1], transbins[end])
+    ylim(ylims...)
+    title(L"Difference from ERA-I profiles, $\Delta V_E = \int_{-30 m}^0 \, (v_{mod,E}-v_E) \, dz$", fontsize=12)
+    text(textpos..., "(a) Phillips unidirectional profile")
+    text(0.5, 30, "Mean abs error: " * @sprintf("%7.5f ", mean(abs.(east_phil_diff_transp))))
+
+    subplot(312)
+    hist(east_comb_diff_transp, bins=transbins, color=col)
+    xlim(transbins[1], transbins[end])
+    ylim(ylims...)
+    ylabel("Number of occurrences")
+    text(textpos..., "(b) Phillips (wind sea) and monochromatic (swell) directional profile")
+    text(0.5, 30, "Mean abs error: " * @sprintf("%7.5f ", mean(abs.(east_comb_diff_transp))))
+
+    subplot(313)
+    hist(east_comb_phil_diff_transp, bins=transbins, color=col)
+    xlim(transbins[1], transbins[end])
+    ylim(ylims...)
+    text(textpos3..., "(c) Phillips wind sea and swell directional profile")
+    text(0.5, 30, "Mean abs error: " * @sprintf("%7.5f ", mean(abs.(east_comb_phil_diff_transp))))
+    xlabel(xstrtransp)
+    gcf()
+    fname = pth*"east_transpdiff"
+    savefig(fname*".png")
+    savefig(fname*".pdf")
+
+    ### North transport
+    xstrtransp = L"North transport [m$^2/$s]"
+    col = "k"
+    ylims = (0, 100)
+    transbins = 0:0.03:0.8
+    figtransp = matplotlib.pyplot.figure()
+    subplot(311)
+    hist(north_phil_diff_transp, bins=transbins, color=col)
+    xlim(transbins[1], transbins[end])
+    ylim(ylims...)
+    title(L"Difference from ERA-I profiles, $\Delta V_E = \int_{-30 m}^0 \, (v_{mod,N}-v_N) \, dz$", fontsize=12)
+    text(textpos..., "(a) Phillips unidirectional profile")
+    text(0.5, 30, "Mean abs error: " * @sprintf("%7.5f ", mean(abs.(north_phil_diff_transp))))
+
+    subplot(312)
+    hist(north_comb_diff_transp, bins=transbins, color=col)
+    xlim(transbins[1], transbins[end])
+    ylim(ylims...)
+    ylabel("Number of occurrences")
+    text(textpos..., "(b) Phillips (wind sea) and monochromatic (swell) directional profile")
+    text(0.5, 30, "Mean abs error: " * @sprintf("%7.5f ", mean(abs.(north_comb_diff_transp))))
+
+    subplot(313)
+    hist(north_comb_phil_diff_transp, bins=transbins, color=col)
+    xlim(transbins[1], transbins[end])
+    ylim(ylims...)
+    text(textpos3..., "(c) Phillips wind sea and swell directional profile")
+    text(0.5, 30, "Mean abs error: " * @sprintf("%7.5f ", mean(abs.(north_comb_phil_diff_transp))))
+    xlabel(xstrtransp)
+    gcf()
+    fname = pth*"north_transpdiff"
     savefig(fname*".png")
     savefig(fname*".pdf")
 
