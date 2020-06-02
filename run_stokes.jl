@@ -316,6 +316,8 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         #tmp[lundef] .= 0.0
         #equaldepth[:,:,k0:k1] = abs.(tmp)
         tmp[.!dry] = log.(v0spdws[.!dry]./v0spdsw[.!dry])./(2(kws[.!dry].-ksw[.!dry]))
+        lundef = tmp.<0.0
+        tmp[lundef] .= 0.0
         equaldepth[:,:,k0:k1] = tmp
 
 
@@ -423,8 +425,8 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         mp2.drawparallels(collect(-90:30:90), labels=[true,false,false,false])
         # Draw the edge of the map projection region (the projection limb)
         mp2.drawmapboundary(fill_color="aqua")
-        #clim(0,30)
-        clim(-30,30)
+        clim(0,30)
+        #clim(-30,30)
         cb = mp2.colorbar()
         cb.set_label("Balancing depth [m]")
         title("Balancing depth of swell and wind sea Stokes drift")
