@@ -20,7 +20,7 @@ function parse_commandline(args)
     time julia run_stokes.jl -i ../../Stokesdrift/Stokes_shear_ei/stokes*20100[7-9]*.nc -o run_stokes_12h_JAS.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
     time julia run_stokes.jl -i ../../Stokesdrift/Stokes_shear_ei/stokes*2010*.nc -o run_stokes_12h.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
     time julia run_stokes.jl -i /lustre/storeB/project/fou/om/STP40/Stokesdrift/Stokes_shear_ei/stokes_shear_ei.2010*.nc -o run_stokes_12h.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
-    time julia run_stokes.jl -i /lustre/storeB/project/fou/om/STP40/Stokesdrift/Stokes_shear_ei/stokes_shear_ei.201*.nc -o run_stokes_12h_2010-2012.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
+    time julia run_stokes.jl -i /lustre/storeB/project/fou/om/STP40/Stokesdrift/Stokes_shear_ei/stokes_shear_ei.201*.nc -o run_stokes_12h_2010-2011.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
     time julia run_stokes.jl -i ../Data/stokes*2010*.nc -o run_stokes_short.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
 
     ### Or from the REPL:
@@ -140,6 +140,7 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
             v[dry] .= miss
             vars[varname] = v
         end
+        ncclose(infile)
 
         ### Total sea
         tm01 = vars["mp1"]
