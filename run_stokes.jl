@@ -19,7 +19,8 @@ function parse_commandline(args)
     time julia run_stokes.jl -i ../../Stokesdrift/Stokes_shear_ei/stokes*20100[1-3]*.nc -o run_stokes_12h_JFM.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
     time julia run_stokes.jl -i ../../Stokesdrift/Stokes_shear_ei/stokes*20100[7-9]*.nc -o run_stokes_12h_JAS.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
     time julia run_stokes.jl -i ../../Stokesdrift/Stokes_shear_ei/stokes*2010*.nc -o run_stokes_12h.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
-    time julia run_stokes.jl -i /lustre/storeB/project/fou/om/Stokesdrift/Stokes_shear_ei/stokes*201*.nc -o run_stokes_12h_2010-2012.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
+    time julia run_stokes.jl -i /lustre/storeB/project/fou/om/STP40/Stokesdrift/Stokes_shear_ei/stokes_shear_ei.2010*.nc -o run_stokes_12h.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
+    time julia run_stokes.jl -i /lustre/storeB/project/fou/om/STP40/Stokesdrift/Stokes_shear_ei/stokes_shear_ei.201*.nc -o run_stokes_12h_2010-2012.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
     time julia run_stokes.jl -i ../Data/stokes*2010*.nc -o run_stokes_short.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
 
     ### Or from the REPL:
@@ -433,7 +434,8 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         mp2.drawparallels(collect(-90:30:90), labels=[true,false,false,false])
         # Draw the edge of the map projection region (the projection limb)
         mp2.drawmapboundary(fill_color="aqua")
-        clim(0,30)
+        #clim(0,30)
+        clim(0,20)
         #clim(-30,30)
         cb = mp2.colorbar()
         cb.set_label("Balancing depth [m]")
