@@ -19,6 +19,7 @@ function parse_commandline(args)
     time julia run_stokes.jl -i ../../Stokesdrift/Stokes_shear_ei/stokes*20100[1-3]*.nc -o run_stokes_12h_JFM.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
     time julia run_stokes.jl -i ../../Stokesdrift/Stokes_shear_ei/stokes*20100[7-9]*.nc -o run_stokes_12h_JAS.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
     time julia run_stokes.jl -i ../../Stokesdrift/Stokes_shear_ei/stokes*2010*.nc -o run_stokes_12h.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
+    time julia run_stokes.jl -i /lustre/storeB/project/fou/om/Stokesdrift/Stokes_shear_ei/stokes*201*.nc -o run_stokes_12h_2010-2012.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
     time julia run_stokes.jl -i ../Data/stokes*2010*.nc -o run_stokes_short.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
 
     ### Or from the REPL:
@@ -218,8 +219,14 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         Veastws = Vspdws.*sind.(sdirws)
         Vnorthws = Vspdws.*cosd.(sdirws)
 
-        # Wind sea wave number
+        # Wind sea wavenumber
         kws = Stokes.phillips_wavenumber(v0spdws, Vspdws)
+
+        # Wind sea monochromatic Stokes drift (for balancing depth)
+        kws_mono = Stokes.mono_wavenumber(v0spdws, Vspdws)
+
+        # Wind sea monochromatic Stokes drift (for balancing depth)
+        v0spdws_mono = Vspdws./kws_mono
 
         # Total Stokes transport magnitude
         Vspd = hypot.(Veastws+Veastsw, Vnorthws+Vnorthsw)
@@ -315,7 +322,8 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         #println("CCC sum(dry), sum(lsmallws), sum(lundef), size(lundef) ", sum(dry), " ", sum(lsmallws), " ", sum(lundef), " ", prod(size(lundef)))
         #tmp[lundef] .= 0.0
         #equaldepth[:,:,k0:k1] = abs.(tmp)
-        tmp[.!dry] = log.(v0spdws[.!dry]./v0spdsw[.!dry])./(2(kws[.!dry].-ksw[.!dry]))
+        #tmp[.!dry] = log.(v0spdws[.!dry]./v0spdsw[.!dry])./(2(kws[.!dry].-ksw[.!dry]))
+        tmp[.!dry] = log.(v0spdws_mono[.!dry]./v0spdsw[.!dry])./(2(kws_mono[.!dry].-ksw[.!dry]))
         lundef = tmp.<0.0
         tmp[lundef] .= 0.0
         equaldepth[:,:,k0:k1] = tmp

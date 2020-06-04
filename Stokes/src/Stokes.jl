@@ -1,5 +1,5 @@
 """
-Stokes.jl - A toolbox of Stokes drift functions.
+    Stokes.jl - A toolbox of Stokes drift functions.
 
 Module Stokes contains a number of functions that return (vectorized) Stokes
 drift variables such as the Stokes profile under a Phillips spectrum,
@@ -18,8 +18,8 @@ using Sphere
 
 export fp_pm, hm0_pm
 export surface_stokes_rascle09
-export transport, phillips_wavenumber, phillips_profile
-export phillips_shear, phillips_transportz
+export transport, phillips_wavenumber, mono_wavenumber, phillips_profile
+export phillips_shear, phillips_transportz, stokesprofile2d, mono_profile
 
 const GEARTH = 9.806
 export GEARTH
