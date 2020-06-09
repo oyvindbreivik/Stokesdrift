@@ -364,8 +364,8 @@ while !eof(f_comb) && !eof(f_full)
                 profilephil2fig = "stokes_combined_east_profile_phil2"
                 savefig("Fig/$profilephil2fig.pdf")
                 savefig("Fig/$profilephil2fig.png")
-                gcf()
 
+                gcf()
                 # North profile
                 fig7 = matplotlib.pyplot.figure()
                 plot(vnorthws_phil2, zvec, color="tab:blue")
@@ -628,7 +628,7 @@ if transdiffplotting
     hist(north_phil_diff_transp, bins=transbins, color=col)
     xlim(transbins[1], transbins[end])
     ylim(ylims...)
-    title(L"Difference from ERA-I profiles, $\Delta V_E = \int_{-30 m}^0 \, (v_{mod,N}-v_N) \, dz$", fontsize=12)
+    title(L"Difference from ERA-I profiles, $\Delta V_N = \int_{-30 m}^0 \, (v_{mod,N}-v_N) \, dz$", fontsize=12)
     text(textpos..., "(a) Phillips unidirectional profile")
     text(0.5, 30, "Mean abs error: " * @sprintf("%7.5f ", mean(abs.(north_phil_diff_transp))))
 

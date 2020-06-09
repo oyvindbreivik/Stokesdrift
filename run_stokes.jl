@@ -16,8 +16,8 @@ function parse_commandline(args)
     Compute Stokes shear and inverse Stokes depth from NetCDF input. Dump ASCII profile to selected location
 
     Example:
-    time julia run_stokes.jl -i ../../Stokesdrift/Stokes_shear_ei/stokes*20100[1-3]*.nc -o run_stokes_12h_JFM.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
-    time julia run_stokes.jl -i ../../Stokesdrift/Stokes_shear_ei/stokes*20100[7-9]*.nc -o run_stokes_12h_JAS.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
+    time julia run_stokes.jl -i /lustre/storeB/project/fou/om/STP40/Stokesdrift/Stokes_shear_ei/stokes_shear_ei.201?0[1-3]*.nc -o run_stokes_12h_JFM.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
+    time julia run_stokes.jl -i /lustre/storeB/project/fou/om/STP40/Stokesdrift/Stokes_shear_ei/stokes_shear_ei.201?0[7-9]*.nc -o run_stokes_12h_JAS.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
     time julia run_stokes.jl -i ../../Stokesdrift/Stokes_shear_ei/stokes*2010*.nc -o run_stokes_12h.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
     time julia run_stokes.jl -i /lustre/storeB/project/fou/om/STP40/Stokesdrift/Stokes_shear_ei/stokes_shear_ei.2010*.nc -o run_stokes_12h.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
     time julia run_stokes.jl -i /lustre/storeB/project/fou/om/STP40/Stokesdrift/Stokes_shear_ei/stokes_shear_ei.201*.nc -o run_stokes_12h_2010-2011.asc --lon 340.0 --lat 60.0 --dep 29.9 --dz 0.1 --strd 2
@@ -140,7 +140,8 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
             v[dry] .= miss
             vars[varname] = v
         end
-        ncclose(infile)
+        #ncclose(infile)
+        ncclose()
 
         ### Total sea
         tm01 = vars["mp1"]
@@ -250,7 +251,9 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         # Calculate magnitude (speed) of Stokes surface swell and windsea vectors
         # Must choose one or the other, depending on the magnitude
         v0spdsw = (wsnorth.*ust-wseast.*vst)./(sweast.*wsnorth-swnorth.*wseast)
+        #v0spdsw = (wsnorth.*ust-wseast.*vst)./max.(sweast.*wsnorth-swnorth.*wseast, 0.00001)
         v0spdws = (swnorth.*ust-sweast.*vst)./(wseast.*swnorth-wsnorth.*sweast)
+        #println("CCC minimum nom denom ", minimum(wsnorth.*ust-wseast.*vst), minimum(sweast.*wsnorth-swnorth.*wseast))
         lbigswell = v0spdsw .> v0spdws
 
         # Swell and wind sea Stokes drift components
@@ -411,12 +414,12 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         x, y = mp(Lons, Lats)
         #x0, y0 = mp(340.0, 60.0)
         # Something funny going on with the lons and lats - off by one?
-        x0, y0 = mp([340.0, 340.0], [60.0, 59.0])
+        x0, y0 = mp([340.0, 340.0], [60.0, 58.5])
         println("CCC x0 y0", x0[2], y0[2])
         xx = reshape(x, size(Lons))
         yy = reshape(y, size(Lats))
         mp.pcolor(xx, yy, Vratiomean[:,:,1])
-        text(x0[2],y0[2],"x")
+        text(x0[2],y0[2],"x",color="red")
         cb = mp.colorbar()
         cb.set_label(L"$V_\mathrm{sw}/V_\mathrm{S}$ [~]")
         title("Ratio of swell to total Stokes transport")
