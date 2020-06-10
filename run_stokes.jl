@@ -302,7 +302,8 @@ function read_stokes_write_combined_profile(infiles, outfile, lon, lat, zvec=0.0
         ### Compute the ratio of the swell Stokes e-folding depth to the total Stokes e-folding depth
 
         #tmp = Vspdsw.*v0spd./(Vspd.*v0spdsw.+TOL)
-        tmp = Vspdsw.*v0spdws./(Vspdws.*v0spdsw.+TOL)
+        #tmp = Vspdsw.*v0spdws./(Vspdws.*v0spdsw.+TOL)
+        tmp = Vspdsw.*v0spdws_mono./(Vspdws.*v0spdsw.+TOL)
         tmp[dry] .= 0.0
         tmp[abs.(tmp).>25.0] .= 0.0
         depthratio[:,:,k0:k1] = tmp
